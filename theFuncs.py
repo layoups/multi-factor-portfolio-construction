@@ -55,7 +55,6 @@ def get_stock_return_data(sedols=None):
         "./data/cleaned_return_data_sc.csv", 
         # nrows=3, 
         parse_dates=['DATE'], 
-        # converters={'DATE': lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
         index_col=0
     ).fillna(method='ffill').fillna(0)
 
