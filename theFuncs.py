@@ -74,6 +74,19 @@ def get_benchmark_return_data():
 
     return df
 
+###################################### PERFORMANCE MEASURES ######################################
+def information_ratio():
+    None
+
+def max_drawdown():
+    None
+
+def information_coefficient():
+    None
+
+def t_statistic():
+    None
+
 ######################################## RETURNS ########################################
 def get_portfolio_returns(weights, date, delta, returns):
     relevant_returns = returns.loc[
