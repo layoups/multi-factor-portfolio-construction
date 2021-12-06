@@ -5,6 +5,10 @@ import scipy.stats as st
 from statsmodels.regression.rolling import RollingOLS
 import random as rd
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+import gurobipy as gp
+from gurobipy import GRB
 
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier 
 from sklearn.linear_model import LogisticRegression, Lasso
@@ -24,6 +28,7 @@ from sklearn.exceptions import ConvergenceWarning
 from hyperopt import tpe, hp, fmin, STATUS_OK,Trials, space_eval
 from sklearn.datasets import fetch_openml
 
+######################################## DATA ########################################
 def get_stock_factors_data(sedols=None):
     df = pd.read_csv(
         './data/rus1000_stocks_factors.csv', 
@@ -65,6 +70,14 @@ def get_benchmark_return_data():
 
     return df
 
+######################################## RETURNS ########################################
+def get_portfolio_returns(weights, date, returns):
+    None
+
+def get_rus1000_returns(date, returns):
+    None
+
+######################################## ML PIPELINE ########################################
 class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
     def __init__(self):
         self._scalar = StandardScaler()
