@@ -82,8 +82,11 @@ def information_ratio(returns, index_returns):
 
     return final_return_diff / return_diff_std * (12.0 / 191)
 
-def max_drawdown():
-    None
+def max_drawdown(returns):
+    i = np.argmax(np.maximum.accumulate(returns) - returns) # end of the period
+    j = np.argmax(returns[:i])
+
+    return (returns[j] - returns[i]) / returns[j]
 
 def group_by_decile(date, factors):
     return factors.loc[
@@ -179,6 +182,12 @@ if __name__ == "__main__":
     print(
         information_ratio(
             get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"], get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
+        )
+    )
+
+    print(
+        max_drawdown(
+            get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
         )
     )
 
