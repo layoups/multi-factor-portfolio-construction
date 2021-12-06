@@ -81,6 +81,14 @@ def information_ratio():
 def max_drawdown():
     None
 
+def group_by_decile(date, factors):
+    return factors.loc[
+        (slice(None), date), :
+    ].RETURN.groupby(
+        pd.qcut(factors.loc[(slice(None), date), :].RETURN.values, 10)
+    ).count()
+    
+
 def scale_predicted_returns(y_pred):
     None
 
@@ -158,4 +166,10 @@ if __name__ == "__main__":
     y = np.random.random(100)
 
     print(information_coefficient_t_statistic(X, y))
+
+    print(factors.head())
+
+    print(
+        group_by_decile(date, factors)
+    )
     
