@@ -37,7 +37,7 @@ def get_stock_factors_data(sedols=None):
         # nrows = 10000, 
         low_memory=False, 
         converters={
-            'SEDOL': (lambda x: x[:6]), 
+            'SEDOL': lambda x: x[:6], 
             'DATE': lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)
         },
         # parse_dates=['DATE'], 
@@ -137,6 +137,6 @@ if __name__ == "__main__":
 
     date = stock_returns.index[100]
 
-    print(stock_returns.loc[date: date + relativedelta(months=1)])
-    print(get_rus1000_returns(date, 1, benchmark_returns))
+    print(stock_returns.loc[date: date + relativedelta(months=3)])
+    print(get_rus1000_returns(date, 10, benchmark_returns))
     
