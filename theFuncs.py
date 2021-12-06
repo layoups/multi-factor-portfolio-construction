@@ -96,7 +96,7 @@ def group_by_decile(date, factors):
     ).count()
 
 def scale_predicted_returns(y_pred):
-    None
+    return y_pred.rank(pct=True)
 
 def information_coefficient_t_statistic(X, y):
     ic, _, _, p_value, _ = st.linregress(X, y)
@@ -190,6 +190,8 @@ if __name__ == "__main__":
             get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
         )
     )
+
+    # print(scale_predicted_returns(factors))
 
 
     
