@@ -36,8 +36,11 @@ def get_stock_factors_data(sedols=None):
         header = 2, 
         # nrows = 10000, 
         low_memory=False, 
-        converters={'SEDOL': (lambda x: x[:6])},
-        parse_dates=['DATE'], 
+        converters={
+            'SEDOL': (lambda x: x[:6]), 
+            'DATE': lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)
+        },
+        # parse_dates=['DATE'], 
         index_col=[3, 2]
     ).groupby(
         ['Symbol', 'DATE']
@@ -52,6 +55,7 @@ def get_stock_return_data(sedols=None):
         "./data/cleaned_return_data_sc.csv", 
         # nrows=3, 
         parse_dates=['DATE'], 
+        # converters={'DATE': lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
         index_col=0
     ).fillna(method='ffill').fillna(0)
 
@@ -63,7 +67,8 @@ def get_benchmark_return_data():
         on_bad_lines='skip', 
         # nrows = 100, 
         low_memory=False, 
-        parse_dates=['Date'], 
+        # parse_dates=['Date'],
+        converters={'Date': lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)}, 
         index_col=[0]
     )
     df.index.name = "DATE"
@@ -71,11 +76,20 @@ def get_benchmark_return_data():
     return df
 
 ######################################## RETURNS ########################################
-def get_portfolio_returns(weights, date, returns):
-    None
+def get_portfolio_returns(weights, date, delta, returns):
+    relevant_returns = returns.loc[
+        date: date + relativedelta(months=delta)
+    ].add(1).cumprod().iloc[-1]
 
-def get_rus1000_returns(date, returns):
-    None
+    portfolio_returns = relevant_returns.multiply(weights).sum()
+    return portfolio_returns
+
+def get_rus1000_returns(date, delta, returns):
+    index_returns = returns.loc[
+        date: date + relativedelta(months=delta)
+    ].add(1).cumprod().iloc[-1]
+
+    return index_returns
 
 ######################################## ML PIPELINE ########################################
 class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
@@ -117,9 +131,13 @@ if __name__ == "__main__":
 
     factors = pd.read_csv(
         "data/rus1000_stocks_factors_subset.csv",
-        parse_dates=["DATE"],
+        converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
+        # parse_dates=["DATE"],
         index_col=[0, 1]
     )
 
-    print(factors.head())
+    date = stock_returns.index[100]
+
+    print(stock_returns.loc[date: date + relativedelta(months=1)])
+    print(get_rus1000_returns(date, 1, benchmark_returns))
     
