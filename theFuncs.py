@@ -75,8 +75,12 @@ def get_benchmark_return_data():
     return df
 
 ###################################### PERFORMANCE MEASURES ######################################
-def information_ratio():
-    None
+def information_ratio(returns, index_returns):
+    return_diff = returns - index_returns
+    final_return_diff = return_diff.iloc[-1]
+    return_diff_std = return_diff.std()
+
+    return final_return_diff / return_diff_std * (12.0 / 191)
 
 def max_drawdown():
     None
@@ -87,7 +91,6 @@ def group_by_decile(date, factors):
     ].RETURN.groupby(
         pd.qcut(factors.loc[(slice(None), date), :].RETURN.values, 10)
     ).count()
-    
 
 def scale_predicted_returns(y_pred):
     None
@@ -100,7 +103,7 @@ def information_coefficient_t_statistic(X, y):
 def get_portfolio_returns(weights, date, delta, returns):
     relevant_returns = returns.loc[
         date: date + relativedelta(months=delta)
-    ].add(1).cumprod().iloc[-1]
+    ].add(1).cumprod()
 
     portfolio_returns = relevant_returns.multiply(weights).sum()
     return portfolio_returns
@@ -108,7 +111,7 @@ def get_portfolio_returns(weights, date, delta, returns):
 def get_rus1000_returns(date, delta, returns):
     index_returns = returns.loc[
         date: date + relativedelta(months=delta)
-    ].add(1).cumprod().iloc[-1]
+    ].add(1).cumprod()
 
     return index_returns
 
@@ -160,7 +163,7 @@ if __name__ == "__main__":
     date = stock_returns.index[100]
 
     print(stock_returns.loc[date: date + relativedelta(months=3)])
-    print(get_rus1000_returns(date, 10, benchmark_returns))
+    print(get_rus1000_returns(date, 1000, benchmark_returns))
 
     X = np.random.random(100)
     y = np.random.random(100)
@@ -172,4 +175,12 @@ if __name__ == "__main__":
     print(
         group_by_decile(date, factors)
     )
+
+    print(
+        information_ratio(
+            get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"], get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
+        )
+    )
+
+
     
