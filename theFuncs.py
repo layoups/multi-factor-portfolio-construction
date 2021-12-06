@@ -40,7 +40,7 @@ def get_stock_factors_data(sedols=None):
         method='ffill'
     ).sort_index()
 
-    return df
+    return df if sedols is None else df.loc[(sedols,), :]
 
 def get_stock_return_data(sedols=None):
     df = pd.read_csv(
@@ -50,7 +50,7 @@ def get_stock_return_data(sedols=None):
         index_col=0
     ).fillna(method='ffill').fillna(0)
 
-    return df
+    return df if sedols is None else df.loc[(sedols,), :]
 
 def get_benchmark_return_data():
     df = pd.read_csv(
@@ -82,5 +82,5 @@ if __name__ == "__main__":
         index_col=[0, 1]
     )
 
-    print(benchmark_returns.head())
+    print(factors.head())
     
