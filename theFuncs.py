@@ -146,7 +146,6 @@ transformer = ColumnTransformer(
 )
 
 models = {
-    'AdaBoost': AdaBoostRegressor(), 
     'LinearRegression': LinearRegression(
         solver='saga', 
         verbose=0, 
@@ -155,21 +154,60 @@ models = {
         # tol=1e-3, 
         penalty='elasticnet'
     ),
+    'AdaBoost': AdaBoostRegressor(), 
     'KNN': KNeighborsRegressor(), 
 }
 
 space = {
-    'AdaBoost': {
-        "n_estimators": hp.randint("n_estimators", 100, 600)
-    },
     'LinearRegression': {
         'C': hp.uniform('logreg.C', 0.005, 1.0),
         'l1_ratio': hp.uniform('logreg.l1', 0, 1.0)
+    },
+    'AdaBoost': {
+        "n_estimators": hp.randint("n_estimators", 100, 600)
     },
     'KNN': {
         "n_neighbors": hp.randint("n_neighbors", 3, 23)
     }, 
 }
+
+@ignore_warnings(category=ConvergenceWarning)
+def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo):
+    trials = Trials()
+    theResultDict = {}
+    
+    def objective(params):
+        model.set_params(**params)
+        
+        score = cross_val_score(
+            model, X_train, y_train, cv=3, n_jobs=-1, error_score=0.99
+        )
+        return {'loss': 1 - np.mean(score), 'status': STATUS_OK}
+
+    best_classifier = fmin(objective, params, algo=tpe.suggest, max_evals=3, trials=trials)
+    best_params = space_eval(params, best_classifier)
+
+    opti = model
+    opti.set_params(**best_params)
+
+    opti_model = opti.fit(
+        X_train,
+        y_train
+    )
+    y_pred = opti_model.predict(X_test)
+    y_pred_proba = opti_model.predict_proba(X_test)
+    df = pd.concat(
+        [pd.Series(y_pred).fillna(0), pd.Series([x[1] for x in opti_model.predict_proba(X_test)])], 
+        axis=1
+    )
+    
+    theResultDict["Model"] = algo
+    theResultDict["Tuned Parameters"] = opti.get_params()
+    theResultDict["Misclassification Rate"] = 1 - metrics.accuracy_score(y_test, y_pred)
+    theResultDict["F1"] = metrics.f1_score(y_test, y_pred)
+    theResultDict["AUC"] = metrics.roc_auc_score(y_test, y_pred)
+    theResultDict["KS"] = st.ks_2samp(y_test, y_pred)
+    return theResultDict
 
 
 
