@@ -65,6 +65,32 @@ def get_benchmark_return_data():
 
     return df
 
+class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self._scalar = StandardScaler()
+        return None
+
+    def fit(self, X, y=None):
+        X = self._scalar.fit(X)
+        return self
+
+    def transform(self, X, y = None):
+        X = pd.DataFrame(
+            self._scalar.transform(X), 
+            columns=X.columns, 
+            index=X.index
+        )
+        return X
+
+numerical_columns = []
+
+transformer = ColumnTransformer(
+    transformers=[
+        ("numerical_transformer", NumericalFeatureCleaner(), numerical_columns),
+    ], 
+    remainder='drop'
+)
+
 
 
 if __name__ == "__main__":
