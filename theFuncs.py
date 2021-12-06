@@ -10,9 +10,9 @@ from dateutil.relativedelta import relativedelta
 import gurobipy as gp
 from gurobipy import GRB
 
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier 
-from sklearn.linear_model import LogisticRegression, Lasso
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor 
+from sklearn.linear_model import LinearRegression, Lasso
+from sklearn.neighbors import KNeighborsRegressor
 
 from sklearn import metrics 
 from sklearn.model_selection import cross_val_score
@@ -144,6 +144,32 @@ transformer = ColumnTransformer(
     ], 
     remainder='drop'
 )
+
+models = {
+    'AdaBoost': AdaBoostRegressor(), 
+    'LinearRegression': LinearRegression(
+        solver='saga', 
+        verbose=0, 
+        max_iter=1000, 
+        random_state=1, 
+        # tol=1e-3, 
+        penalty='elasticnet'
+    ),
+    'KNN': KNeighborsRegressor(), 
+}
+
+space = {
+    'AdaBoost': {
+        "n_estimators": hp.randint("n_estimators", 100, 600)
+    },
+    'LinearRegression': {
+        'C': hp.uniform('logreg.C', 0.005, 1.0),
+        'l1_ratio': hp.uniform('logreg.l1', 0, 1.0)
+    },
+    'KNN': {
+        "n_neighbors": hp.randint("n_neighbors", 3, 23)
+    }, 
+}
 
 
 
