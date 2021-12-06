@@ -81,6 +81,9 @@ def information_ratio():
 def max_drawdown():
     None
 
+def scale_predicted_returns(y_pred):
+    None
+
 def information_coefficient_t_statistic(X, y):
     ic, _, _, p_value, _ = st.linregress(X, y)
     return ic, p_value
