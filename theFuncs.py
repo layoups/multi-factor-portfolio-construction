@@ -81,11 +81,9 @@ def information_ratio():
 def max_drawdown():
     None
 
-def information_coefficient():
-    None
-
-def t_statistic():
-    None
+def information_coefficient_t_statistic(X, y):
+    ic, _, _, p_value, _ = st.linregress(X, y)
+    return ic, p_value
 
 ######################################## RETURNS ########################################
 def get_portfolio_returns(weights, date, delta, returns):
@@ -152,4 +150,9 @@ if __name__ == "__main__":
 
     print(stock_returns.loc[date: date + relativedelta(months=3)])
     print(get_rus1000_returns(date, 10, benchmark_returns))
+
+    X = np.random.random(100)
+    y = np.random.random(100)
+
+    print(information_coefficient_t_statistic(X, y))
     
