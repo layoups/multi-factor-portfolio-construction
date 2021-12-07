@@ -168,7 +168,7 @@ space = {
         'l1_ratio': hp.uniform('l1', 1e-2, 1)
     },
     'AdaBoost': {
-        "n_estimators": hp.randint("n_estimators", 300, 350),
+        "n_estimators": hp.randint("n_estimators", 200, 400),
     },
     'DecisionTree': {
         'max_depth': hp.randint('max_depth', 1, 7),
@@ -194,7 +194,7 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
         return {'loss':  -np.mean(score), 'status': STATUS_OK}
 
     best_classifier = fmin(
-        objective, params, algo=tpe.suggest, max_evals=5, trials=trials, show_progressbar=False
+        objective, params, algo=tpe.suggest, max_evals=10, trials=trials, show_progressbar=False
     )
     best_params = space_eval(params, best_classifier)
 
@@ -279,6 +279,7 @@ if __name__ == "__main__":
     return_df.to_csv("output/predictions_F.csv")
 
     print(eval_df.groupby(level=1).describe()["T"])
+    print(eval_df.groupby(level=1).describe()["IC"])
 
 
 
