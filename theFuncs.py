@@ -56,7 +56,7 @@ def get_stock_return_data(sedols=None):
         # nrows=3, 
         parse_dates=['DATE'], 
         index_col=[0]
-    ).fillna(method='ffill').fillna(0)
+    ).fillna(method='ffill').fillna(0).sort_index()
 
     return df if sedols is None else df.loc[(sedols,), :]
 
@@ -69,7 +69,7 @@ def get_benchmark_return_data():
         # parse_dates=['Date'],
         converters={'Date': lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)}, 
         index_col=[0]
-    )
+    ).sort_index()
     df.index.name = "DATE"
 
     return df
@@ -193,8 +193,8 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date)
     )
     y_pred = opti_model.predict(X_test)
     
-    thePredictionEvalDict["Model"] = algo
-    thePredictionEvalDict["Date"] = date
+    thePredictionEvalDict["MODEL"] = algo
+    thePredictionEvalDict["DATE"] = date
     thePredictionEvalDict["IC"], thePredictionEvalDict["T"] =\
         information_coefficient_t_statistic(y_test, y_pred)
     
@@ -210,14 +210,14 @@ if __name__ == "__main__":
         "data/cleaned_return_data.csv", 
         parse_dates=["DATE"],
         index_col=[0]
-    )
+    ).sort_index()
 
     factors = pd.read_csv(
         "data/rus1000_stocks_factors_subset.csv",
         converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
         # parse_dates=["DATE"],
         index_col=[1, 0]
-    )
+    ).sort_index()
 
     date = stock_returns.index[100]
 
@@ -247,7 +247,15 @@ if __name__ == "__main__":
         )
     )
 
-    # print(scale_predicted_returns(factors))
+    print(
+        scale_predicted_returns(
+            factors.loc[date: date + relativedelta(months=3)].RETURN
+        )
+    )
+    # print(factors.loc[date: date + relativedelta(months=3)].RETURN)
+    ret = np.array([[1, 2]])
+    ret = np.append(ret, [[3, 4]], axis=0)
+    print(ret)
 
 
     
