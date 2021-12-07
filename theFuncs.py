@@ -31,6 +31,7 @@ from sklearn.datasets import fetch_openml
 
 ######################################## DATA ########################################
 def get_stock_factors_data(sedols=None):
+    sedols = pd.read_csv("data/sedols.csv", index_col=False)
     df = pd.read_csv(
         './data/rus1000_stocks_factors.csv', 
         on_bad_lines='skip', 
@@ -43,11 +44,14 @@ def get_stock_factors_data(sedols=None):
         },
         # parse_dates=['DATE'], 
         index_col=[2, 3]
-    ).sort_index().groupby(
-        ['DATE', 'SEDOL']
-    ).fillna(
-        method='ffill'
-    ).fillna(0)
+    ).sort_index()
+
+    df = df[df.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
+    df = df[~df.index.duplicated(keep='first')]
+
+    df["TARGET"] = df.groupby(level=1).RETURN.shift(-1)
+    df = df.groupby(level=1).fillna(method='ffill').fillna(0)
+    df.sort_index(inplace=True)
 
     return df if sedols is None else df.loc[(sedols,), :]
 
