@@ -137,7 +137,9 @@ class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
         )
         return X
 
-numerical_columns = []
+# numerical_columns = ["RPM71", "RSTDEV", "ROE1", "ROA1", "ROIC", "BR1", "EP1", "RV1", "9MFR", "8MFR"]
+numerical_columns = ["RCP", "RBP", "RSP", "REP", "RDP", "RPM71", "RSTDEV", "9MFR", "8MFR", "ROA1"]
+# RCP,RBP,RSP,REP,RDP,RPM71,RSTDEV,ROE1,ROE3,ROE5,ROA1,ROA3,ROIC,BR1,BR2,EP1,EP2,RV1,RV2,CTEF,9MFR,8MFR,LIT
 
 transformer = ColumnTransformer(
     transformers=[
@@ -197,7 +199,6 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
 
     opti = model
     opti.set_params(**best_params)
-    print(best_params)
 
     opti_model = opti.fit(
         X_train,
@@ -296,13 +297,6 @@ if __name__ == "__main__":
     X_test = ml_factors.loc[date]
     y_test = X_test.TARGET
 
-    transformer = ColumnTransformer(
-        transformers=[
-            ("numerical_transformer", NumericalFeatureCleaner(), X_train.columns[3: 14]),
-        ], 
-        remainder='drop'
-    )
-
     X_train_tr, X_test_tr = transformer.fit_transform(X_train), transformer.transform(X_test)
 
     y_pred_ada, theDict_ada = tune_train_test(X_train_tr, X_test_tr, y_train, y_test, models['AdaBoost'], space['AdaBoost'], 'AdaBoost', date, X_test.index.get_level_values("SEDOL").unique())
@@ -312,8 +306,8 @@ if __name__ == "__main__":
     eval_df = pd.DataFrame([theDict_ada, theDict_dr]).set_index(["DATE", "MODEL"])
     return_df = pd.DataFrame(y_pred_ada + y_pred_dr).set_index(["DATE", "MODEL", "SEDOL"])
 
-    print(eval_df.loc["2004-11-01"])
-    print(return_df.loc[("2004-11-01", "AdaBoost",), :])
+    print(eval_df)
+    # print(return_df.loc[("2004-11-01", "AdaBoost",), :])
 
 
 
