@@ -11,7 +11,7 @@ import gurobipy as gp
 from gurobipy import GRB
 
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor 
-from sklearn.linear_model import LinearRegression, Lasso
+from sklearn.linear_model import LinearRegression, Lasso, ElasticNet
 from sklearn.neighbors import KNeighborsRegressor
 
 from sklearn import metrics 
@@ -41,9 +41,9 @@ def get_stock_factors_data(sedols=None):
             'DATE': lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)
         },
         # parse_dates=['DATE'], 
-        index_col=[3, 2]
+        index_col=[2, 3]
     ).groupby(
-        ['Symbol', 'DATE']
+        ['DATE', 'SEDOL']
     ).fillna(
         method='ffill'
     ).sort_index()
@@ -55,7 +55,7 @@ def get_stock_return_data(sedols=None):
         "./data/cleaned_return_data_sc.csv", 
         # nrows=3, 
         parse_dates=['DATE'], 
-        index_col=0
+        index_col=[0]
     ).fillna(method='ffill').fillna(0)
 
     return df if sedols is None else df.loc[(sedols,), :]
@@ -90,10 +90,10 @@ def max_drawdown(returns):
 
 def group_by_decile(date, factors):
     return factors.loc[
-        (slice(None), date), :
-    ].RETURN.groupby(
-        pd.qcut(factors.loc[(slice(None), date), :].RETURN.values, 10)
-    ).count()
+            date
+        ].RETURN.groupby(
+            pd.qcut(factors.loc[date].RETURN.values, 10)
+        ).count()
 
 def scale_predicted_returns(y_pred):
     return y_pred.rank(pct=True)
@@ -146,13 +146,9 @@ transformer = ColumnTransformer(
 )
 
 models = {
-    'LinearRegression': LinearRegression(
-        solver='saga', 
-        verbose=0, 
+    'LinearRegression': ElasticNet(
         max_iter=1000, 
-        random_state=1, 
         # tol=1e-3, 
-        penalty='elasticnet'
     ),
     'AdaBoost': AdaBoostRegressor(), 
     'KNN': KNeighborsRegressor(), 
@@ -160,8 +156,8 @@ models = {
 
 space = {
     'LinearRegression': {
-        'C': hp.uniform('logreg.C', 0.005, 1.0),
-        'l1_ratio': hp.uniform('logreg.l1', 0, 1.0)
+        'alpha': hp.uniform('alpha', 0.005, 10),
+        'l1_ratio': hp.uniform('l1', 0, 1.0)
     },
     'AdaBoost': {
         "n_estimators": hp.randint("n_estimators", 100, 600)
@@ -172,9 +168,10 @@ space = {
 }
 
 @ignore_warnings(category=ConvergenceWarning)
-def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo):
+def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date):
     trials = Trials()
-    theResultDict = {}
+    thePredictionDict = {}
+    thePredictionEvalDict = {}
     
     def objective(params):
         model.set_params(**params)
@@ -195,19 +192,14 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo):
         y_train
     )
     y_pred = opti_model.predict(X_test)
-    y_pred_proba = opti_model.predict_proba(X_test)
-    df = pd.concat(
-        [pd.Series(y_pred).fillna(0), pd.Series([x[1] for x in opti_model.predict_proba(X_test)])], 
-        axis=1
-    )
     
-    theResultDict["Model"] = algo
-    theResultDict["Tuned Parameters"] = opti.get_params()
-    theResultDict["Misclassification Rate"] = 1 - metrics.accuracy_score(y_test, y_pred)
-    theResultDict["F1"] = metrics.f1_score(y_test, y_pred)
-    theResultDict["AUC"] = metrics.roc_auc_score(y_test, y_pred)
-    theResultDict["KS"] = st.ks_2samp(y_test, y_pred)
-    return theResultDict
+    thePredictionEvalDict["Model"] = algo
+    thePredictionEvalDict["Date"] = date
+    thePredictionEvalDict["IC"], thePredictionEvalDict["T"] =\
+        information_coefficient_t_statistic(y_test, y_pred)
+    
+    thePredictionDict
+    return thePredictionDict, thePredictionEvalDict
 
 
 
@@ -224,7 +216,7 @@ if __name__ == "__main__":
         "data/rus1000_stocks_factors_subset.csv",
         converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
         # parse_dates=["DATE"],
-        index_col=[0, 1]
+        index_col=[1, 0]
     )
 
     date = stock_returns.index[100]
