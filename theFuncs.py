@@ -268,8 +268,8 @@ if __name__ == "__main__":
             eval_df += [eval_instance]
             return_df += return_instance
 
-    eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"])
-    return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"])
+    eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"]).sort_index()
+    return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"]).sort_index()
 
     eval_df.to_csv("output/IC_T_CS.csv")
     return_df.to_csv("output/predictions_CS.csv")
