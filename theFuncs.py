@@ -168,7 +168,7 @@ space = {
         'l1_ratio': hp.uniform('l1', 1e-2, 1)
     },
     'AdaBoost': {
-        "n_estimators": hp.randint("n_estimators", 200, 400),
+        "n_estimators": hp.randint("n_estimators", 300, 500),
     },
     'DecisionTree': {
         'max_depth': hp.randint('max_depth', 1, 7),
@@ -226,14 +226,22 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
 
 if __name__ == "__main__":
     sedols = pd.read_csv("data/sedols.csv", index_col=False)
-    benchmark_returns = get_benchmark_return_data()
-    factors = get_stock_factors_data()
-    stock_returns = get_stock_return_data()
+    # benchmark_returns = get_benchmark_return_data()
+    # factors = get_stock_factors_data()
+    # stock_returns = get_stock_return_data()
 
-    factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
+    factors = pd.read_csv(
+        "data/rus1000_stocks_factors_subset.csv",
+        converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
+        # parse_dates=["DATE"],
+        index_col=[1, 0]
+    ).sort_index()
+
+    # factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
     factors = factors[~factors.index.duplicated(keep='first')]
 
     factors["TARGET"] = factors.groupby(level=1).RETURN.shift(-1)
+    factors = factors.groupby(level=1).fillna(method='ffill').fillna(0)
     factors.sort_index(inplace=True)
 
     eval_df = []
@@ -247,9 +255,12 @@ if __name__ == "__main__":
         # date = datetime.strptime("2004-11-01", "%Y-%m-%d")
         start_date = date - relativedelta(months=12)
 
-        X_train = factors.loc[
-            start_date: date + relativedelta(months=-1)
-        ].groupby(level=[0, 1]).fillna(method='ffill').fillna(0)
+        # X_train = factors.loc[
+        #     start_date: date + relativedelta(months=-1)
+        # ].groupby(level=[0, 1]).fillna(method='ffill').fillna(0)
+
+        X_train = factors.loc[start_date: date + relativedelta(months=-1)]
+        
         y_train = X_train.TARGET
 
         # X_test = factors.loc[date].fillna(0)
