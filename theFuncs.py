@@ -13,6 +13,7 @@ from gurobipy import GRB
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor 
 from sklearn.linear_model import LinearRegression, Lasso, ElasticNet
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
 
 from sklearn import metrics 
 from sklearn.model_selection import cross_val_score
@@ -145,30 +146,38 @@ transformer = ColumnTransformer(
     remainder='drop'
 )
 
+def custom_scoring(y_true, y_pred):
+    y_pred = scale_predicted_returns(
+        pd.Series(y_pred, index=pd.RangeIndex(len(y_true)))
+    ).multiply(100)
+    return metrics.mean_absolute_error(y_true, y_pred)
+
 models = {
     'LinearRegression': ElasticNet(
         max_iter=1000, 
-        # tol=1e-3, 
+        tol=1e-3, 
     ),
     'AdaBoost': AdaBoostRegressor(), 
-    'KNN': KNeighborsRegressor(), 
+    'DecisionTree': DecisionTreeRegressor(), 
 }
 
 space = {
     'LinearRegression': {
-        'alpha': hp.uniform('alpha', 0.005, 10),
-        'l1_ratio': hp.uniform('l1', 0, 1.0)
+        'alpha': hp.uniform('alpha', 0.5, 2),
+        'l1_ratio': hp.uniform('l1', 1e-2, 1)
     },
     'AdaBoost': {
-        "n_estimators": hp.randint("n_estimators", 100, 600)
+        "n_estimators": hp.randint("n_estimators", 300, 350),
     },
-    'KNN': {
-        "n_neighbors": hp.randint("n_neighbors", 3, 23)
+    'DecisionTree': {
+        'max_depth': hp.randint('max_depth', 1, 7),
+        'min_samples_leaf': hp.randint('min_samples_leaf', 1, 20),
+        'min_samples_split': hp.randint('min_samples_split', 2, 40),
     }, 
 }
 
 @ignore_warnings(category=ConvergenceWarning)
-def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date):
+def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date, index):
     trials = Trials()
     thePredictionDict = {}
     thePredictionEvalDict = {}
@@ -177,15 +186,18 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date)
         model.set_params(**params)
         
         score = cross_val_score(
-            model, X_train, y_train, cv=3, n_jobs=-1, error_score=0.99
+            model, X_train, y_train, cv=3, n_jobs=-1, error_score=0.99, 
+            # scoring=metrics.make_scorer(custom_scoring, greater_is_better=False)
+            scoring='neg_mean_absolute_error'
         )
-        return {'loss': 1 - np.mean(score), 'status': STATUS_OK}
+        return {'loss':  -np.mean(score), 'status': STATUS_OK}
 
-    best_classifier = fmin(objective, params, algo=tpe.suggest, max_evals=3, trials=trials)
+    best_classifier = fmin(objective, params, algo=tpe.suggest, max_evals=10, trials=trials)
     best_params = space_eval(params, best_classifier)
 
     opti = model
     opti.set_params(**best_params)
+    print(best_params)
 
     opti_model = opti.fit(
         X_train,
@@ -193,12 +205,14 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date)
     )
     y_pred = opti_model.predict(X_test)
     
-    thePredictionEvalDict["MODEL"] = algo
-    thePredictionEvalDict["DATE"] = date
-    thePredictionEvalDict["IC"], thePredictionEvalDict["T"] =\
-        information_coefficient_t_statistic(y_test, y_pred)
+    # thePredictionEvalDict["MODEL"] = algo
+    # thePredictionEvalDict["DATE"] = date
+    # thePredictionEvalDict["IC"], thePredictionEvalDict["T"] =\
+    #     information_coefficient_t_statistic(y_test, y_pred)
     
-    thePredictionDict
+    # thePredictionDict
+    new_y_pred = scale_predicted_returns(pd.Series(y_pred, index=index))
+    print(information_coefficient_t_statistic(new_y_pred, y_test.div(100)))
     return thePredictionDict, thePredictionEvalDict
 
 
@@ -219,50 +233,75 @@ if __name__ == "__main__":
         index_col=[1, 0]
     ).sort_index()
 
-    date = stock_returns.index[100]
+    # date = stock_returns.index[100]
 
-    print(stock_returns.loc[date: date + relativedelta(months=3)])
-    print(get_rus1000_returns(date, 1000, benchmark_returns))
+    # print(stock_returns.loc[date: date + relativedelta(months=3)])
+    # print(get_rus1000_returns(date, 1000, benchmark_returns))
 
-    X = np.random.random(100)
-    y = np.random.random(100)
+    # X = np.random.random(100)
+    # y = np.random.random(100)
 
-    print(information_coefficient_t_statistic(X, y))
+    # print(information_coefficient_t_statistic(X, y))
 
-    print(factors.head())
+    # print(factors.head())
 
-    print(
-        group_by_decile(date, factors)
-    )
+    # print(
+    #     group_by_decile(date, factors)
+    # )
 
-    print(
-        information_ratio(
-            get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"], get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
-        )
-    )
+    # print(
+    #     information_ratio(
+    #         get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"], get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
+    #     )
+    # )
 
-    print(
-        max_drawdown(
-            get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
-        )
-    )
+    # print(
+    #     max_drawdown(
+    #         get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
+    #     )
+    # )
 
-    print(
-        scale_predicted_returns(
-            factors.loc[date: date + relativedelta(months=3)].RETURN
-        )
-    )
+    # print(
+    #     scale_predicted_returns(
+    #         factors.loc[date: date + relativedelta(months=3)].RETURN
+    #     )
+    # )
     # print(factors.loc[date: date + relativedelta(months=3)].RETURN)
     # start = datetime.now()
     # ret = np.array([[1, 2]])
     # ret = np.append(ret, [[3, 4]], axis=0)
     # print(datetime.now() - start)
 
-    start = datetime.now()
-    ret = [[1, 2]]
-    ret += [[3, 4]]
-    print(datetime.now() - start)
-    print(ret)
+    # start = datetime.now()
+    # ret = [[1, 2]]
+    # ret += [[3, 4]]
+    # print(datetime.now() - start)
+    # print(ret)
+
+    date = datetime.strptime("2004-11-01", "%Y-%m-%d")
+    start_date = date - relativedelta(months=12)
+
+    ml_factors = factors.loc[start_date: date].fillna(method='ffill').fillna(0)
+
+    ml_factors["TARGET"] = ml_factors.RETURN.shift(-1).fillna(0)
+
+    X_train = ml_factors.loc[start_date: date + relativedelta(months=-1)]
+    y_train = X_train.TARGET
+
+    X_test = ml_factors.loc[date]
+    y_test = X_test.TARGET
+
+    transformer = ColumnTransformer(
+        transformers=[
+            ("numerical_transformer", NumericalFeatureCleaner(), X_train.columns[3: 14]),
+        ], 
+        remainder='drop'
+    )
+
+    X_train_tr, X_test_tr = transformer.fit_transform(X_train), transformer.transform(X_test)
+
+    y_pred = tune_train_test(X_train_tr, X_test_tr, y_train, y_test, models['AdaBoost'], space['AdaBoost'], 'AdaBoost', date, X_test.index.get_level_values("SEDOL").unique())
+
 
 
     
