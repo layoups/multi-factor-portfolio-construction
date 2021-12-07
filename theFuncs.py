@@ -137,7 +137,6 @@ class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
         )
         return X
 
-# numerical_columns = ["RPM71", "RSTDEV", "ROE1", "ROA1", "ROIC", "BR1", "EP1", "RV1", "9MFR", "8MFR"]
 numerical_columns = ["RCP", "RBP", "RSP", "REP", "RDP", "RPM71", "RSTDEV", "9MFR", "8MFR", "ROA1"]
 # RCP,RBP,RSP,REP,RDP,RPM71,RSTDEV,ROE1,ROE3,ROE5,ROA1,ROA3,ROIC,BR1,BR2,EP1,EP2,RV1,RV2,CTEF,9MFR,8MFR,LIT
 
@@ -232,65 +231,6 @@ if __name__ == "__main__":
     stock_returns = get_stock_return_data()
 
     factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
-    
-
-    # stock_returns = pd.read_csv(
-    #     "data/cleaned_return_data.csv", 
-    #     parse_dates=["DATE"],
-    #     index_col=[0]
-    # ).sort_index()
-
-    # factors = pd.read_csv(
-    #     "data/rus1000_stocks_factors_subset.csv",
-    #     converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
-    #     # parse_dates=["DATE"],
-    #     index_col=[1, 0]
-    # ).sort_index()
-
-    # date = stock_returns.index[100]
-
-    # print(stock_returns.loc[date: date + relativedelta(months=3)])
-    # print(get_rus1000_returns(date, 1000, benchmark_returns))
-
-    # X = np.random.random(100)
-    # y = np.random.random(100)
-
-    # print(information_coefficient_t_statistic(X, y))
-
-    # print(factors.head())
-
-    # print(
-    #     group_by_decile(date, factors)
-    # )
-
-    # print(
-    #     information_ratio(
-    #         get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"], get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
-    #     )
-    # )
-
-    # print(
-    #     max_drawdown(
-    #         get_rus1000_returns(date, 1000, benchmark_returns)["Russell 1000 Bench Return"]
-    #     )
-    # )
-
-    # print(
-    #     scale_predicted_returns(
-    #         factors.loc[date: date + relativedelta(months=3)].RETURN
-    #     )
-    # )
-    # print(factors.loc[date: date + relativedelta(months=3)].RETURN)
-    # start = datetime.now()
-    # ret = np.array([[1, 2]])
-    # ret = np.append(ret, [[3, 4]], axis=0)
-    # print(datetime.now() - start)
-
-    # start = datetime.now()
-    # ret = [[1, 2]]
-    # ret += [[3, 4]]
-    # print(datetime.now() - start)
-    # print(ret)
 
     eval_df = []
     return_df = []
@@ -331,7 +271,10 @@ if __name__ == "__main__":
     eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"])
     return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"])
 
-    print(eval_df)
+    eval_df.to_csv("output/IC_T_CS.csv")
+    return_df.to_csv("output/predictions_CS.csv")
+
+    print(eval_df.groupby(level=1).describe()["T"])
 
 
 

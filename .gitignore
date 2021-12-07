@@ -131,4 +131,5 @@ dmypy.json
 # misc
 /data/cleaned_return_data_sc.csv
 /data/rus1000_stocks_factors.csv
+garbage.py
 
