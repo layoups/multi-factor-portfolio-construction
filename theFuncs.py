@@ -207,11 +207,11 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
     )
     y_pred = opti_model.predict(X_test)
     
-    # thePredictionDict
     new_y_pred = scale_predicted_returns(pd.Series(y_pred, index=index))
 
     thePredictionEvalDict["MODEL"] = algo
     thePredictionEvalDict["DATE"] = date
+    
     thePredictionEvalDict["IC"], thePredictionEvalDict["T"] =\
         information_coefficient_t_statistic(y_test.div(100), new_y_pred)
 
@@ -231,11 +231,12 @@ if __name__ == "__main__":
     stock_returns = get_stock_return_data()
 
     factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
+    factors = factors[~factors.index.duplicated(keep='first')]
 
     eval_df = []
     return_df = []
 
-    for date in pd.date_range("2004-11-01", "2006-01-01", freq="MS"):
+    for date in pd.date_range("2004-11-01", "2018-11-01", freq="MS"):
         print(date)
         
         # date = datetime.strptime("2004-11-01", "%Y-%m-%d")
@@ -271,8 +272,8 @@ if __name__ == "__main__":
     eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"]).sort_index()
     return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"]).sort_index()
 
-    eval_df.to_csv("output/IC_T_CS.csv")
-    return_df.to_csv("output/predictions_CS.csv")
+    eval_df.to_csv("output/IC_T.csv")
+    return_df.to_csv("output/predictions.csv")
 
     print(eval_df.groupby(level=1).describe()["T"])
 
