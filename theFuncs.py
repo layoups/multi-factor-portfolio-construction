@@ -239,6 +239,8 @@ if __name__ == "__main__":
     eval_df = []
     return_df = []
 
+    start = datetime.now()
+
     for date in pd.date_range("2004-11-01", "2006-11-01", freq="MS"):
         print(date)
         
@@ -250,7 +252,8 @@ if __name__ == "__main__":
         ].groupby(level=[0, 1]).fillna(method='ffill').fillna(0)
         y_train = X_train.TARGET
 
-        X_test = factors.loc[date].fillna(0)
+        # X_test = factors.loc[date].fillna(0)
+        X_test = factors.loc[date]
         y_test = X_test.TARGET
 
         X_train_tr, X_test_tr = transformer.fit_transform(X_train), transformer.transform(X_test)
@@ -280,6 +283,8 @@ if __name__ == "__main__":
 
     print(eval_df.groupby(level=1).describe()["T"])
     print(eval_df.groupby(level=1).describe()["IC"])
+
+    print(datetime.now() - start)
 
 
 
