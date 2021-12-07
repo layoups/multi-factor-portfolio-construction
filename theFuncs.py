@@ -194,7 +194,9 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
         )
         return {'loss':  -np.mean(score), 'status': STATUS_OK}
 
-    best_classifier = fmin(objective, params, algo=tpe.suggest, max_evals=5, trials=trials)
+    best_classifier = fmin(
+        objective, params, algo=tpe.suggest, max_evals=5, trials=trials, show_progressbar=False
+    )
     best_params = space_eval(params, best_classifier)
 
     opti = model
@@ -284,30 +286,46 @@ if __name__ == "__main__":
     # print(datetime.now() - start)
     # print(ret)
 
-    date = datetime.strptime("2004-11-01", "%Y-%m-%d")
-    start_date = date - relativedelta(months=12)
+    eval_df = []
+    return_df = []
 
-    ml_factors = factors.loc[start_date: date].fillna(method='ffill').fillna(0)
+    for date in pd.date_range("2004-11-01", "2006-01-01", freq="MS"):
+        print(date)
+        
+        # date = datetime.strptime("2004-11-01", "%Y-%m-%d")
+        start_date = date - relativedelta(months=12)
 
-    ml_factors["TARGET"] = ml_factors.RETURN.shift(-1).fillna(0)
+        ml_factors = factors.loc[start_date: date].fillna(method='ffill').fillna(0)
 
-    X_train = ml_factors.loc[start_date: date + relativedelta(months=-1)]
-    y_train = X_train.TARGET
+        ml_factors["TARGET"] = ml_factors.RETURN.shift(-1).fillna(0)
 
-    X_test = ml_factors.loc[date]
-    y_test = X_test.TARGET
+        X_train = ml_factors.loc[start_date: date + relativedelta(months=-1)]
+        y_train = X_train.TARGET
 
-    X_train_tr, X_test_tr = transformer.fit_transform(X_train), transformer.transform(X_test)
+        X_test = ml_factors.loc[date]
+        y_test = X_test.TARGET
 
-    y_pred_ada, theDict_ada = tune_train_test(X_train_tr, X_test_tr, y_train, y_test, models['AdaBoost'], space['AdaBoost'], 'AdaBoost', date, X_test.index.get_level_values("SEDOL").unique())
+        X_train_tr, X_test_tr = transformer.fit_transform(X_train), transformer.transform(X_test)
+        for algo in models:
+            return_instance, eval_instance = tune_train_test(
+                X_train_tr, 
+                X_test_tr,
+                y_train,
+                y_test,
+                models[algo],
+                space[algo],
+                algo,
+                date,
+                X_test.index.get_level_values("SEDOL").unique()
+            )
 
-    y_pred_dr, theDict_dr = tune_train_test(X_train_tr, X_test_tr, y_train, y_test, models['DecisionTree'], space['DecisionTree'], 'DecisionTree', date, X_test.index.get_level_values("SEDOL").unique())
+            eval_df += [eval_instance]
+            return_df += return_instance
 
-    eval_df = pd.DataFrame([theDict_ada, theDict_dr]).set_index(["DATE", "MODEL"])
-    return_df = pd.DataFrame(y_pred_ada + y_pred_dr).set_index(["DATE", "MODEL", "SEDOL"])
+    eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"])
+    return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"])
 
-    print(eval_df)
-    # print(return_df.loc[("2004-11-01", "AdaBoost",), :])
+    print(eval_df.groupby(level=1).mean())
 
 
 
