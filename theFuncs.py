@@ -179,7 +179,7 @@ space = {
 @ignore_warnings(category=ConvergenceWarning)
 def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date, index):
     trials = Trials()
-    thePredictionDict = {}
+    thePredictionDict = []
     thePredictionEvalDict = {}
     
     def objective(params):
@@ -192,7 +192,7 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
         )
         return {'loss':  -np.mean(score), 'status': STATUS_OK}
 
-    best_classifier = fmin(objective, params, algo=tpe.suggest, max_evals=10, trials=trials)
+    best_classifier = fmin(objective, params, algo=tpe.suggest, max_evals=5, trials=trials)
     best_params = space_eval(params, best_classifier)
 
     opti = model
@@ -205,14 +205,19 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
     )
     y_pred = opti_model.predict(X_test)
     
-    # thePredictionEvalDict["MODEL"] = algo
-    # thePredictionEvalDict["DATE"] = date
-    # thePredictionEvalDict["IC"], thePredictionEvalDict["T"] =\
-    #     information_coefficient_t_statistic(y_test, y_pred)
-    
     # thePredictionDict
     new_y_pred = scale_predicted_returns(pd.Series(y_pred, index=index))
-    print(information_coefficient_t_statistic(new_y_pred, y_test.div(100)))
+
+    thePredictionEvalDict["MODEL"] = algo
+    thePredictionEvalDict["DATE"] = date
+    thePredictionEvalDict["IC"], thePredictionEvalDict["T"] =\
+        information_coefficient_t_statistic(y_test.div(100), new_y_pred)
+
+    for i in index:
+        thePredictionDict += [
+            {"MODEL": algo, "DATE": date, "SEDOL": i, "RETURN": new_y_pred.loc[i]}
+        ]
+
     return thePredictionDict, thePredictionEvalDict
 
 
@@ -300,7 +305,16 @@ if __name__ == "__main__":
 
     X_train_tr, X_test_tr = transformer.fit_transform(X_train), transformer.transform(X_test)
 
-    y_pred = tune_train_test(X_train_tr, X_test_tr, y_train, y_test, models['AdaBoost'], space['AdaBoost'], 'AdaBoost', date, X_test.index.get_level_values("SEDOL").unique())
+    y_pred_ada, theDict_ada = tune_train_test(X_train_tr, X_test_tr, y_train, y_test, models['AdaBoost'], space['AdaBoost'], 'AdaBoost', date, X_test.index.get_level_values("SEDOL").unique())
+
+    y_pred_dr, theDict_dr = tune_train_test(X_train_tr, X_test_tr, y_train, y_test, models['DecisionTree'], space['DecisionTree'], 'DecisionTree', date, X_test.index.get_level_values("SEDOL").unique())
+
+    eval_df = pd.DataFrame([theDict_ada, theDict_dr]).set_index(["DATE", "MODEL"])
+    return_df = pd.DataFrame(y_pred_ada + y_pred_dr).set_index(["DATE", "MODEL", "SEDOL"])
+
+    print(eval_df.loc["2004-11-01"])
+    print(return_df.loc[("2004-11-01", "AdaBoost",), :])
+
 
 
 
