@@ -253,8 +253,15 @@ if __name__ == "__main__":
         )
     )
     # print(factors.loc[date: date + relativedelta(months=3)].RETURN)
-    ret = np.array([[1, 2]])
-    ret = np.append(ret, [[3, 4]], axis=0)
+    # start = datetime.now()
+    # ret = np.array([[1, 2]])
+    # ret = np.append(ret, [[3, 4]], axis=0)
+    # print(datetime.now() - start)
+
+    start = datetime.now()
+    ret = [[1, 2]]
+    ret += [[3, 4]]
+    print(datetime.now() - start)
     print(ret)
 
 
