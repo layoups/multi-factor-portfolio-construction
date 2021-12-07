@@ -43,11 +43,11 @@ def get_stock_factors_data(sedols=None):
         },
         # parse_dates=['DATE'], 
         index_col=[2, 3]
-    ).groupby(
+    ).sort_index().groupby(
         ['DATE', 'SEDOL']
     ).fillna(
         method='ffill'
-    ).fillna(0).sort_index()
+    ).fillna(0)
 
     return df if sedols is None else df.loc[(sedols,), :]
 
@@ -233,23 +233,24 @@ if __name__ == "__main__":
     factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
     factors = factors[~factors.index.duplicated(keep='first')]
 
+    factors["TARGET"] = factors.groupby(level=1).RETURN.shift(-1)
+    factors.sort_index(inplace=True)
+
     eval_df = []
     return_df = []
 
-    for date in pd.date_range("2004-11-01", "2018-11-01", freq="MS"):
+    for date in pd.date_range("2004-11-01", "2006-11-01", freq="MS"):
         print(date)
         
         # date = datetime.strptime("2004-11-01", "%Y-%m-%d")
         start_date = date - relativedelta(months=12)
 
-        ml_factors = factors.loc[start_date: date].fillna(method='ffill').fillna(0)
-
-        ml_factors["TARGET"] = ml_factors.RETURN.shift(-1).fillna(0)
-
-        X_train = ml_factors.loc[start_date: date + relativedelta(months=-1)]
+        X_train = factors.loc[
+            start_date: date + relativedelta(months=-1)
+        ].groupby(level=[0, 1]).fillna(method='ffill').fillna(0)
         y_train = X_train.TARGET
 
-        X_test = ml_factors.loc[date]
+        X_test = factors.loc[date].fillna(0)
         y_test = X_test.TARGET
 
         X_train_tr, X_test_tr = transformer.fit_transform(X_train), transformer.transform(X_test)
@@ -269,11 +270,13 @@ if __name__ == "__main__":
             eval_df += [eval_instance]
             return_df += return_instance
 
+        # ctef = factors.loc[date].CTEF
+
     eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"]).sort_index()
     return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"]).sort_index()
 
-    eval_df.to_csv("output/IC_T.csv")
-    return_df.to_csv("output/predictions.csv")
+    eval_df.to_csv("output/IC_T_F.csv")
+    return_df.to_csv("output/predictions_F.csv")
 
     print(eval_df.groupby(level=1).describe()["T"])
 
