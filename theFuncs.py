@@ -30,7 +30,7 @@ from hyperopt import tpe, hp, fmin, STATUS_OK,Trials, space_eval
 from sklearn.datasets import fetch_openml
 
 ######################################## DATA ########################################
-def get_stock_factors_data(sedols=None):
+def get_stock_factors_data():
     sedols = pd.read_csv("data/sedols.csv", index_col=False)
     df = pd.read_csv(
         './data/rus1000_stocks_factors.csv', 
@@ -56,7 +56,8 @@ def get_stock_factors_data(sedols=None):
 
     return df
 
-def get_stock_return_data(sedols=None):
+def get_stock_return_data():
+    sedols = pd.read_csv("data/sedols.csv", index_col=False)
     df = pd.read_csv(
         # "./data/cleaned_return_data_sc.csv", 
         "./data/cleaned_return_data.csv", 
@@ -65,7 +66,7 @@ def get_stock_return_data(sedols=None):
         index_col=[0]
     ).fillna(method='ffill').fillna(0).sort_index()
 
-    return df if sedols is None else df.loc[(sedols,), :]
+    return df[sedols.SEDOLS]
 
 def get_benchmark_return_data():
     df = pd.read_csv(
@@ -82,12 +83,8 @@ def get_benchmark_return_data():
     return df
 
 ###################################### PERFORMANCE MEASURES ######################################
-def information_ratio(returns, index_returns):
-    return_diff = returns - index_returns
-    final_return_diff = return_diff.iloc[-1]
-    return_diff_std = return_diff.std()
-
-    return final_return_diff / return_diff_std * (12.0 / 191)
+def information_ratio(returns):
+    return returns.mean() / returns.std() * np.sqrt(12)
 
 def max_drawdown(returns):
     i = np.argmax(np.maximum.accumulate(returns) - returns) # end of the period
@@ -119,29 +116,49 @@ def get_portfolio_weights_for_model(model, portfolio_weights):
             index="DATE"
         ).fillna(0)
 
-# def get_portfolio_returns(weights, date, delta, returns):
-#     relevant_returns = returns.loc[
-#         date: date + relativedelta(months=delta)
-#     ][weights.index.get_level_values(1)].add(1).cumprod().copy()
-
-#     for i in weights.index:
-#         relevant_returns[[i]] = relevant_returns[[i]].multiply(weights.loc[i])
-
-#     # portfolio_returns = relevant_returns.multiply(weights).sum()
-#     # portfolio_returns = relevant_returns.multiply(weights, axis='index').sum()
-#     return relevant_returns.sum(axis=1)
-
-def get_rus1000_returns(date, delta, returns):
-    index_returns = returns.loc[
-        date: date + relativedelta(months=delta)
-    ].add(1).cumprod()
-
-    return index_returns
-
-def get_cumulative_portfolio_returns(weights, returns):
+def get_monthly_portfolio_returns(weights, returns):
     return weights.multiply(
         returns[weights.columns].loc[weights.index]
-    ).sum(axis=1).add(1).cumprod()
+    ).sum(axis=1)
+
+def get_cumulative_portfolio_returns(weights, returns):
+    return get_monthly_portfolio_returns(weights, returns).add(1).cumprod()
+
+def get_rus1000_monthly_returns(returns):
+    return returns["Russell 1000 Bench Return"]
+
+def get_rus1000_cumulative_returns(returns):
+    return get_rus1000_monthly_returns(returns).add(1).cumprod()
+
+
+def get_portfolio_benchmark_returns(
+    portfolio_return_metric, portfolio_weights, stock_returns, 
+    benchmark_return_metric, benchmark_returns
+):
+    return pd.concat(
+        [
+            portfolio_return_metric(
+                get_portfolio_weights_for_model("LinearRegression", portfolio_weights), 
+                stock_returns
+            ),
+            portfolio_return_metric(
+                get_portfolio_weights_for_model("CTEF", portfolio_weights), 
+                stock_returns
+            ),
+            portfolio_return_metric(
+                get_portfolio_weights_for_model("AdaBoost", portfolio_weights), 
+                stock_returns
+            ),
+            portfolio_return_metric(
+                get_portfolio_weights_for_model("DecisionTree", portfolio_weights), 
+                stock_returns
+            ),
+            benchmark_return_metric(benchmark_returns)
+        ],
+        axis=1
+    ).dropna().rename(
+        columns={0: "LinearRegression", 1: "CTEF", 2: "AdaBoost" , 3: "DecisionTree"}
+    )
 
 ######################################## ML PIPELINE ########################################
 class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
@@ -420,8 +437,8 @@ def portfolio_pipeline(
 
 
 if __name__ == "__main__":
-    # benchmark_returns = get_benchmark_return_data()
-    factors = get_stock_factors_data()
+    benchmark_returns = get_benchmark_return_data()
+    # factors = get_stock_factors_data()
     stock_returns = get_stock_return_data()
 
     # print(group_by_decile("2004-11-01", factors))
@@ -454,8 +471,6 @@ if __name__ == "__main__":
         parse_dates=["DATE"]
     )
 
-    # print(predictions.loc[("2011-03-01", "AdaBoost",), :].describe())
-
     # get_prediction_thresholds(predictions).to_csv("output/return_thresholds.csv")
 
     # portfolio_weights = portfolio_pipeline(predictions)    
@@ -466,21 +481,16 @@ if __name__ == "__main__":
         parse_dates=["DATE"]
     )
 
-    # print(portfolio_weights.loc["2005-01-01"])
-
-    # agg_weights = portfolio_weights.groupby(level=[0, 1]).sum()
-    # print(agg_weights.describe())
-
-    for model in ["LinearRegression", "CTEF", "AdaBoost", "DecisionTree"]:
-
-        ada_weights = get_portfolio_weights_for_model(model, portfolio_weights)
-
-        print(
-            get_cumulative_portfolio_returns(ada_weights, stock_returns).iloc[-1]
-            # ada_weights.multiply(stock_returns[ada_weights.columns].loc[ada_weights.index]).sum(axis=1).add(1).cumprod().iloc[-1]
+    all_returns = get_portfolio_benchmark_returns(
+            get_monthly_portfolio_returns,
+            portfolio_weights,
+            stock_returns,
+            get_rus1000_monthly_returns,
+            benchmark_returns
         )
-
-
+    print(all_returns.apply(lambda x: x.add(1).cumprod().iloc[-1]))
+    print(all_returns.apply(lambda x: max_drawdown(x)))
+    print(all_returns.apply(lambda x: information_ratio(x)))
 
     print(datetime.now() - start)
 
