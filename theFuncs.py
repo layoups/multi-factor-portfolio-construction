@@ -99,7 +99,7 @@ def group_by_decile(date, factors):
     return factors.loc[
             date
         ].RETURN.groupby(
-            pd.qcut(factors.loc[date].RETURN.values, 10)
+            pd.qcut(factors.loc[date].RETURN.values, 10, duplicates='drop')
         ).count()
 
 def scale_predicted_returns(y_pred):
@@ -421,8 +421,10 @@ def portfolio_pipeline(
 
 if __name__ == "__main__":
     # benchmark_returns = get_benchmark_return_data()
-    # factors = get_stock_factors_data()
+    factors = get_stock_factors_data()
     stock_returns = get_stock_return_data()
+
+    # print(group_by_decile("2004-11-01", factors))
 
     start = datetime.now()
 
