@@ -30,10 +30,10 @@ from hyperopt import tpe, hp, fmin, STATUS_OK,Trials, space_eval
 from sklearn.datasets import fetch_openml
 
 ######################################## DATA ########################################
-def get_stock_factors_data():
+def get_stock_factors_data(path='./data/rus1000_stocks_factors.csv'):
     sedols = pd.read_csv("data/sedols.csv", index_col=False)
     df = pd.read_csv(
-        './data/rus1000_stocks_factors.csv', 
+        path, 
         on_bad_lines='skip', 
         header = 2, 
         # nrows = 100000, 
@@ -98,6 +98,13 @@ def group_by_decile(date, factors):
         ].RETURN.groupby(
             pd.qcut(factors.loc[date].RETURN.values, 10, duplicates='drop')
         ).count()
+
+def group_all_by_decile(path_to_factors):
+    factors = get_stock_factors_data(path_to_factors)
+    return factors.RETURN.groupby(
+            pd.qcut(factors.RETURN.values, 10, duplicates='drop')
+        ).count()
+
 
 def scale_predicted_returns(y_pred):
     return y_pred.rank(pct=True)
@@ -435,7 +442,7 @@ if __name__ == "__main__":
     # factors = get_stock_factors_data()
     stock_returns = get_stock_return_data()
 
-    # print(group_by_decile("2004-11-01", factors))
+    # print(group_all_by_decile("data/rus1000_stocks_factors.csv"))
 
     start = datetime.now()
 
@@ -450,12 +457,12 @@ if __name__ == "__main__":
     # print(t)
 
     feature_importance = pd.read_csv(
-        "output/feature_importance_KNN.csv", 
+        "output/feature_importance_Final.csv", 
         index_col=[0, 1], 
         parse_dates=["DATE"]
     )
     IC_T = pd.read_csv(
-        "output/IC_T_KNN.csv", 
+        "output/IC_T.csv", 
         index_col=[0, 1], 
         parse_dates=["DATE"]
     )
@@ -465,17 +472,19 @@ if __name__ == "__main__":
         parse_dates=["DATE"]
     )
 
+    print(IC_T.groupby(level=1).describe().IC)
+    print(IC_T.groupby(level=1).describe()["T"])
     # get_prediction_thresholds(predictions).to_csv("output/return_thresholds_KNN.csv")
 
     # portfolio_weights = portfolio_pipeline(predictions, path='output/portfolio_weights_KNN.csv', algos=["LinearRegression", "CTEF", "AdaBoost", "KNN"])   
     # 
-    portfolio_weights = portfolio_pipeline(predictions, algos=["LinearRegression", "CTEF", "AdaBoost", "DecisionTree", "KNN"]) 
+    # portfolio_weights = portfolio_pipeline(predictions, algos=["LinearRegression", "CTEF", "AdaBoost", "DecisionTree", "KNN"]) 
 
-    # portfolio_weights = pd.read_csv(
-    #     "output/portfolio_weights_KNN.csv",
-    #     index_col=[0, 1, 2],
-    #     parse_dates=["DATE"]
-    # )
+    portfolio_weights = pd.read_csv(
+        "output/portfolio_weights_KNN.csv",
+        index_col=[0, 1, 2],
+        parse_dates=["DATE"]
+    )
 
     # portfolio_weights = portfolio_pipeline(predictions)
 
