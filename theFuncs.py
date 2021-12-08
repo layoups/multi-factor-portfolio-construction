@@ -196,8 +196,8 @@ def tune_train_test(
         
         score = cross_val_score(
             model, X_train, y_train, cv=3, n_jobs=-1, error_score=0.99, 
-            # scoring=metrics.make_scorer(custom_scoring, greater_is_better=False)
-            scoring='neg_mean_absolute_error'
+            scoring=metrics.make_scorer(custom_scoring, greater_is_better=False)
+            # scoring='neg_mean_absolute_error'
         )
         return {'loss':  -np.mean(score), 'status': STATUS_OK}
 
@@ -323,7 +323,13 @@ if __name__ == "__main__":
 
     start = datetime.now()
 
-    t, ic = return_prediction_evaluation_pipeline()
+    # t, ic = return_prediction_evaluation_pipeline()
+    # print(ic)
+    # print(t)
+
+    t, ic = return_prediction_evaluation_pipeline(
+        eval_path="output/IC_T_CS.csv", predictions_path="output/predictions_CS.csv", feature_path="output/feature_importance_CS.csv"
+    )
     print(ic)
     print(t)
 
