@@ -51,6 +51,7 @@ def get_stock_factors_data(sedols=None):
 
     df["TARGET"] = df.groupby(level="SEDOL").RETURN.shift(-1)
     df = df.groupby(level=1).fillna(method='ffill').fillna(0)
+    df["MODEL"] = "CTEF"
     df.sort_index(inplace=True)
 
     return df
@@ -252,7 +253,7 @@ if __name__ == "__main__":
 
     start = datetime.now()
 
-    for date in pd.date_range("2004-11-01", "2018-11-01", freq="MS"):
+    for date in pd.date_range("2004-11-01", "2006-11-01", freq="MS"):
         print(date)
         
         # date = datetime.strptime("2004-11-01", "%Y-%m-%d")
@@ -284,10 +285,20 @@ if __name__ == "__main__":
         # ctef = factors.loc[date].CTEF
 
     eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"]).sort_index()
-    return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"]).sort_index()
+    return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"])
+    return_df = pd.concat(
+        [
+            return_df, 
+            factors[["MODEL", "CTEF"]].set_index(
+                "MODEL", append=True
+            ).reorder_levels(
+                ["DATE", "MODEL", "SEDOL"]
+            ).groupby(level=0).rank(pct=True)
+        ]
+    ).sort_index()
 
-    eval_df.to_csv("output/IC_T_Final.csv")
-    return_df.to_csv("output/predictions_Final.csv")
+    # eval_df.to_csv("output/IC_T_Final.csv")
+    return_df.to_csv("output/predictions_CTEF.csv")
 
     print(eval_df.groupby(level=1).describe()["T"])
     print(eval_df.groupby(level=1).describe()["IC"])
