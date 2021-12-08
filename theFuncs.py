@@ -110,6 +110,15 @@ def information_coefficient_t_statistic(X, y):
     return ic, p_value
 
 ######################################## RETURNS ########################################
+def get_portfolio_weights_for_model(model, portfolio_weights):
+    return portfolio_weights[
+            portfolio_weights.index.get_level_values("MODEL") == model
+        ].droplevel(level=1).pivot_table(
+            values="WEIGHT", 
+            columns="SEDOL",
+            index="DATE"
+        ).fillna(0)
+
 def get_portfolio_returns(weights, date, delta, returns):
     relevant_returns = returns.loc[
         date: date + relativedelta(months=delta)
@@ -442,13 +451,6 @@ if __name__ == "__main__":
 
     # get_prediction_thresholds(predictions).to_csv("output/return_thresholds.csv")
 
-    # for date in thresholds.index.get_level_values(0).unique():
-    #     for algo in ["LinearRegression", "CTEF", "AdaBoost"]:
-    #         if algo in thresholds.loc[date].index.get_level_values(0).unique():
-    #             continue
-    #         else:
-    #             print(date, algo)
-
     # portfolio_weights = portfolio_pipeline(predictions)    
 
     portfolio_weights = pd.read_csv(
@@ -459,23 +461,9 @@ if __name__ == "__main__":
 
     # print(portfolio_weights.loc["2005-01-01"])
 
-    agg_weights = portfolio_weights.groupby(level=[0, 1]).sum()
-    print(agg_weights.describe())
+    # agg_weights = portfolio_weights.groupby(level=[0, 1]).sum()
+    # print(agg_weights.describe())
 
-    # filter1 = agg_weights  1
-
-    # print(
-    #     filter1[filter1.WEIGHT == True]
-    # )
-
-    # print(
-    #     get_portfolio_returns(
-    #         portfolio_weights.loc[("2005-01-01", "AdaBoost"): ("2005-03-01", "AdaBoost")].WEIGHT, 
-    #         portfolio_weights.index.get_level_values(0).unique()[2], 
-    #         2, 
-    #         stock_returns
-    #     )
-    # )
 
 
     print(datetime.now() - start)
