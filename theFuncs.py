@@ -329,7 +329,8 @@ def get_prediction_thresholds(predictions, H=0.7):
     return thresholds[thresholds.MASK == True].drop(columns=["SUM", "MASK"])
 
 def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
-    A = return_thresholds.loc[(date, algo,)]
+    A = return_thresholds
+
     B = portfolio_weights.loc[
         (date + relativedelta(months=-1), algo,)
     ]
@@ -347,7 +348,6 @@ def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
             B.drop(index=B_not_A_K.index),
         ]
     )
-    # B_star.drop_duplicates(inplace=True)
     B_star["WEIGHT"] = 1.0 / len(B_star)
     B_star["DATE"] = date
     B_star["MODEL"] = algo
@@ -359,43 +359,45 @@ def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
             )
 
 def portfolio_pipeline(
-    predictions, H=0.7, K=4, start="2004-12-01", end="2018-11-01",
+    predictions, H=0.7, K=4, start="2005-01-01", end="2018-11-01",
     path="output/portfolio_weights.csv", output=True
 ):
+    start_date = datetime.strptime(start, "%Y-%m-%d")
     return_thresholds = get_prediction_thresholds(predictions, H)
-    portfolio_weights = return_thresholds.loc[:start]
+    portfolio_weights = return_thresholds.loc[:start_date + relativedelta(months=-1)]
+    algos = ["LinearRegression", "CTEF", "AdaBoost", "DecisionTree"]
 
     for date in pd.date_range(start, end, freq="MS"):
         print(date)
-        for algo in ["LinearRegression", "CTEF", "AdaBoost", "DecisionTree"]:
-            try:
-                new_weights = rebalance_portfolio(
-                    date, algo, return_thresholds, portfolio_weights, K
-                )
-                portfolio_weights = pd.concat(
-                    [
-                        portfolio_weights,
-                        new_weights
-                    ]
-                ).sort_index()
-            except:
-                try:
-                    new_weights = portfolio_weights.loc[(date + relativedelta(months=-1), algo)]
-                    new_weights["DATE"] = date
-                    new_weights["MODEL"] = algo
-                    portfolio_weights = pd.concat(
-                        [
-                            portfolio_weights,
-                            new_weights.set_index(
-                                ["DATE", "MODEL"], append=True
-                            ).reorder_levels(
-                                    ["DATE", "MODEL", "SEDOL"]
-                            )
-                        ]
-                    ).sort_index()
-                except:
-                    continue
-                
+        curr_return_thresholds = return_thresholds.loc[date]
+        curr_algos = curr_return_thresholds.index.get_level_values("MODEL").unique()
+        for algo in curr_algos:
+            new_weights = rebalance_portfolio(
+                date, algo, curr_return_thresholds.loc[algo], portfolio_weights, K
+            )
+            new_weights = new_weights[~new_weights.index.duplicated(keep='first')].dropna()
+
+            portfolio_weights = pd.concat(
+                [
+                    portfolio_weights,
+                    new_weights
+                ]
+            ).sort_index()
+
+        for algo in np.setdiff1d(algos, curr_algos):
+            new_weights = portfolio_weights.loc[(date + relativedelta(months=-1), algo)]
+            new_weights["DATE"] = date
+            new_weights["MODEL"] = algo
+            portfolio_weights = pd.concat(
+                [
+                    portfolio_weights,
+                    new_weights.set_index(
+                        ["DATE", "MODEL"], append=True
+                    ).reorder_levels(
+                            ["DATE", "MODEL", "SEDOL"]
+                    )
+                ]
+            ).sort_index()
     portfolio_weights.drop(columns=["RETURN"], inplace=True)
     if output:
         portfolio_weights.to_csv(path)
@@ -436,12 +438,34 @@ if __name__ == "__main__":
         parse_dates=["DATE"]
     )
 
-    # weights = portfolio_pipeline(predictions)    
+    # print(predictions.loc[("2011-03-01", "AdaBoost",), :].describe())
 
-    # portfolio_weights = pd.read_csv(
-    #     "output/portfolio_weights.csv",
-    #     index_col=[0, 1, 2],
-    #     parse_dates=["DATE"]
+    # get_prediction_thresholds(predictions).to_csv("output/return_thresholds.csv")
+
+    # for date in thresholds.index.get_level_values(0).unique():
+    #     for algo in ["LinearRegression", "CTEF", "AdaBoost"]:
+    #         if algo in thresholds.loc[date].index.get_level_values(0).unique():
+    #             continue
+    #         else:
+    #             print(date, algo)
+
+    # portfolio_weights = portfolio_pipeline(predictions)    
+
+    portfolio_weights = pd.read_csv(
+        "output/portfolio_weights.csv",
+        index_col=[0, 1, 2],
+        parse_dates=["DATE"]
+    )
+
+    # print(portfolio_weights.loc["2005-01-01"])
+
+    agg_weights = portfolio_weights.groupby(level=[0, 1]).sum()
+    print(agg_weights.describe())
+
+    # filter1 = agg_weights  1
+
+    # print(
+    #     filter1[filter1.WEIGHT == True]
     # )
 
     # print(
