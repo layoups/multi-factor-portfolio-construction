@@ -315,12 +315,13 @@ def return_prediction_evaluation_pipeline(
     return eval_df.groupby(level=1).describe()["T"], eval_df.groupby(level=1).describe()["IC"]
 
 ######################################## PORTFOLIO ########################################
-def get_prediction_thresholds(predictions):
-    masked_predictions = (predictions >= 0.7).rename(columns={"RETURN": "MASK"})
+def get_prediction_thresholds(predictions, H=0.7):
+    predictions["MASK"] = (predictions >= H).rename(columns={"RETURN": "MASK"})
     thresholds = (predictions).join(
-        (masked_predictions).groupby(level=[0, 1]).sum().rename(columns={"MASK": "SUM"})
+        (predictions.drop(columns=["RETURN"])).groupby(level=[0, 1]).sum().rename(columns={"MASK": "SUM"})
     )
-    return thresholds[thresholds.RETURN >= 0.7].drop(columns="SUM")
+    thresholds["WEIGHT"] = thresholds.MASK / thresholds.SUM
+    return thresholds[thresholds.MASK == True].drop(columns=["SUM", "MASK"])
 
 
 
@@ -341,12 +342,25 @@ if __name__ == "__main__":
     # print(ic)
     # print(t)
 
-    feature_importance = pd.read_csv("output/feature_importance_Final.csv", index_col=[0, 1])
-    IC_T = pd.read_csv("output/IC_T_Final.csv", index_col=[0, 1])
-    predictions = pd.read_csv("output/predictions_Final.csv", index_col=[0, 1, 2])
+    feature_importance = pd.read_csv(
+        "output/feature_importance_Final.csv", 
+        index_col=[0, 1], 
+        parse_dates=["DATE"]
+    )
+    IC_T = pd.read_csv(
+        "output/IC_T_Final.csv", 
+        index_col=[0, 1], 
+        parse_dates=["DATE"]
+    )
+    predictions = pd.read_csv(
+        "output/predictions_Final.csv", 
+        index_col=[0, 1, 2], 
+        parse_dates=["DATE"]
+    )
 
     return_thresholds = get_prediction_thresholds(predictions)
-    print(return_thresholds.loc["2004-11-01", "AdaBoost"])
+    # print(return_thresholds)
+    # print(return_thresholds.loc["2004-12-01", "AdaBoost"])
 
     # nov = return_thresholds.loc["2004-11-01", "AdaBoost"]
     # dec = return_thresholds.loc["2004-12-01", "AdaBoost"]
@@ -365,12 +379,45 @@ if __name__ == "__main__":
     #     )]
     # )
 
-    # prev_weights = return_thresholds.loc[:"2004-11-01"]
-    # print(return_thresholds)
+    portfolio_weights = return_thresholds.loc[:"2004-11-01"]
+    K = 4
 
-    # for date in pd.date_range("2004-12-01", "2005-02-01", freq="MS"):
-    #     A = return_thresholds.loc[date, "AdaBoost"]
-    #     B = prev_weights.loc[date + relativedelta(months=-1), "AdaBoost"]
+    for date in pd.date_range("2004-12-01", "2005-02-01", freq="MS"):
+        print(date)
+        for algo in ["CTEF", "AdaBoost", "LinearRegression"]:
+            A = return_thresholds.loc[date, algo]
+            B = portfolio_weights.loc[
+                date + relativedelta(months=-1), algo
+            ]
+
+            B_not_A_K = B.loc[
+                np.setdiff1d(B.index, A.index)
+            ].sort_values(by="RETURN").iloc[:K]
+            A_not_B_K = A.loc[
+                np.setdiff1d(A.index, B.index)
+            ].sort_values(by="RETURN", ascending=False).iloc[:K]
+
+            B_star = pd.concat(
+                [
+                    A_not_B_K,
+                    B.drop(index=B_not_A_K.index),
+                ]
+            )
+            B_star["DATE"] = date
+            B_star["MODEL"] = algo
+            portfolio_weights = pd.concat(
+                [
+                    portfolio_weights,
+                    B_star.set_index(
+                        ["DATE", "MODEL"], append=True
+                    ).reorder_levels(
+                            ["DATE", "MODEL", "SEDOL"]
+                    )
+                ]
+            ).sort_index()
+
+    # print(portfolio_weights.loc["2005-01-01", "CTEF"])
+    print(portfolio_weights)
 
   
 
