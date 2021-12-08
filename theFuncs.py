@@ -329,7 +329,7 @@ def get_prediction_thresholds(predictions, H=0.7):
     return thresholds[thresholds.MASK == True].drop(columns=["SUM", "MASK"])
 
 def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
-    A = return_thresholds.loc[date, algo]
+    A = return_thresholds.loc[(date, algo,)]
     B = portfolio_weights.loc[
         (date + relativedelta(months=-1), algo,)
     ]
@@ -379,7 +379,23 @@ def portfolio_pipeline(
                     ]
                 ).sort_index()
             except:
-                continue
+                try:
+                    new_weights = portfolio_weights.loc[(date + relativedelta(months=-1), algo)]
+                    new_weights["DATE"] = date
+                    new_weights["MODEL"] = algo
+                    portfolio_weights = pd.concat(
+                        [
+                            portfolio_weights,
+                            new_weights.set_index(
+                                ["DATE", "MODEL"], append=True
+                            ).reorder_levels(
+                                    ["DATE", "MODEL", "SEDOL"]
+                            )
+                        ]
+                    ).sort_index()
+                except:
+                    continue
+                
     portfolio_weights.drop(columns=["RETURN"], inplace=True)
     if output:
         portfolio_weights.to_csv(path)
@@ -422,11 +438,11 @@ if __name__ == "__main__":
 
     # weights = portfolio_pipeline(predictions)    
 
-    portfolio_weights = pd.read_csv(
-        "output/portfolio_weights.csv",
-        index_col=[0, 1, 2],
-        parse_dates=["DATE"]
-    )
+    # portfolio_weights = pd.read_csv(
+    #     "output/portfolio_weights.csv",
+    #     index_col=[0, 1, 2],
+    #     parse_dates=["DATE"]
+    # )
 
     # print(
     #     get_portfolio_returns(
