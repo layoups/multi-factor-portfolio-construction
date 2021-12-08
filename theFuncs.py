@@ -296,16 +296,16 @@ def return_prediction_evaluation_pipeline(
     return_df = pd.concat(
         [
             return_df, 
-            factors[["MODEL", "CTEF"]].set_index(
+            factors[["MODEL", "CTEF"]].loc[start:].set_index(
                 "MODEL", append=True
             ).reorder_levels(
                 ["DATE", "MODEL", "SEDOL"]
-            ).groupby(level=0).rank(pct=True).loc[start:]
+            ).groupby(level=0).rank(pct=True).rename(columns={"CTEF": "RETURN"})
         ]
     ).sort_index()
     feature_importance_df = pd.DataFrame(
         feature_importance_df
-    ).set_index(["DATE", "MODEL"]).sort_index()
+    ).set_index(["DATE", "MODEL"]).sort_index().dropna()
 
     if output:
         eval_df.to_csv(eval_path)
