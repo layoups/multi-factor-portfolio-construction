@@ -36,7 +36,7 @@ def get_stock_factors_data(sedols=None):
         './data/rus1000_stocks_factors.csv', 
         on_bad_lines='skip', 
         header = 2, 
-        nrows = 100000, 
+        # nrows = 100000, 
         low_memory=False, 
         converters={
             'SEDOL': lambda x: x[:6], 
@@ -227,33 +227,14 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
 
     return thePredictionDict, thePredictionEvalDict
 
-
-
-if __name__ == "__main__":
-    # benchmark_returns = get_benchmark_return_data()
-    factors = get_stock_factors_data()
-    # stock_returns = get_stock_return_data()
-
-    # factors = pd.read_csv(
-    #     "data/rus1000_stocks_factors_subset.csv",
-    #     converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
-    #     # parse_dates=["DATE"],
-    #     index_col=[1, 0]
-    # ).sort_index()
-
-    # factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
-    # factors = factors[~factors.index.duplicated(keep='first')]
-
-    # factors["TARGET"] = factors.groupby(level=1).RETURN.shift(-1)
-    # factors = factors.groupby(level=1).fillna(method='ffill').fillna(0)
-    # factors.sort_index(inplace=True)
-
+def return_prediction_evaluation_pipeline(
+    start="2004-11-01", end="2018-11-01", 
+    eval_path="output/IC_T_Final.csv", predictions_path="output/predictions_Final.csv"
+):
     eval_df = []
     return_df = []
 
-    start = datetime.now()
-
-    for date in pd.date_range("2004-11-01", "2006-11-01", freq="MS"):
+    for date in pd.date_range(start, end, freq="MS"):
         print(date)
         
         # date = datetime.strptime("2004-11-01", "%Y-%m-%d")
@@ -303,11 +284,37 @@ if __name__ == "__main__":
         ]
     ).sort_index()
 
-    eval_df.to_csv("output/IC_T_Final.csv")
-    return_df.to_csv("output/predictions_Final.csv")
+    eval_df.to_csv(eval_path)
+    return_df.to_csv(predictions_path)
 
-    print(eval_df.groupby(level=1).describe()["T"])
-    print(eval_df.groupby(level=1).describe()["IC"])
+    return eval_df.groupby(level=1).describe()["T"], eval_df.groupby(level=1).describe()["IC"]
+
+
+
+if __name__ == "__main__":
+    # benchmark_returns = get_benchmark_return_data()
+    factors = get_stock_factors_data()
+    # stock_returns = get_stock_return_data()
+
+    # factors = pd.read_csv(
+    #     "data/rus1000_stocks_factors_subset.csv",
+    #     converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
+    #     # parse_dates=["DATE"],
+    #     index_col=[1, 0]
+    # ).sort_index()
+
+    # factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
+    # factors = factors[~factors.index.duplicated(keep='first')]
+
+    # factors["TARGET"] = factors.groupby(level=1).RETURN.shift(-1)
+    # factors = factors.groupby(level=1).fillna(method='ffill').fillna(0)
+    # factors.sort_index(inplace=True)
+
+    start = datetime.now()
+
+    t, ic = return_prediction_evaluation_pipeline()
+    print(ic)
+    print(t)
 
     print(datetime.now() - start)
 
