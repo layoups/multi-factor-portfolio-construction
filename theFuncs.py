@@ -119,17 +119,17 @@ def get_portfolio_weights_for_model(model, portfolio_weights):
             index="DATE"
         ).fillna(0)
 
-def get_portfolio_returns(weights, date, delta, returns):
-    relevant_returns = returns.loc[
-        date: date + relativedelta(months=delta)
-    ][weights.index.get_level_values(1)].add(1).cumprod().copy()
+# def get_portfolio_returns(weights, date, delta, returns):
+#     relevant_returns = returns.loc[
+#         date: date + relativedelta(months=delta)
+#     ][weights.index.get_level_values(1)].add(1).cumprod().copy()
 
-    for i in weights.index:
-        relevant_returns[[i]] = relevant_returns[[i]].multiply(weights.loc[i])
+#     for i in weights.index:
+#         relevant_returns[[i]] = relevant_returns[[i]].multiply(weights.loc[i])
 
-    # portfolio_returns = relevant_returns.multiply(weights).sum()
-    # portfolio_returns = relevant_returns.multiply(weights, axis='index').sum()
-    return relevant_returns.sum(axis=1)
+#     # portfolio_returns = relevant_returns.multiply(weights).sum()
+#     # portfolio_returns = relevant_returns.multiply(weights, axis='index').sum()
+#     return relevant_returns.sum(axis=1)
 
 def get_rus1000_returns(date, delta, returns):
     index_returns = returns.loc[
@@ -137,6 +137,11 @@ def get_rus1000_returns(date, delta, returns):
     ].add(1).cumprod()
 
     return index_returns
+
+def get_cumulative_portfolio_returns(weights, returns):
+    return weights.multiply(
+        returns[weights.columns].loc[weights.index]
+    ).sum(axis=1).add(1).cumprod()
 
 ######################################## ML PIPELINE ########################################
 class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
@@ -463,6 +468,15 @@ if __name__ == "__main__":
 
     # agg_weights = portfolio_weights.groupby(level=[0, 1]).sum()
     # print(agg_weights.describe())
+
+    for model in ["LinearRegression", "CTEF", "AdaBoost", "DecisionTree"]:
+
+        ada_weights = get_portfolio_weights_for_model(model, portfolio_weights)
+
+        print(
+            get_cumulative_portfolio_returns(ada_weights, stock_returns).iloc[-1]
+            # ada_weights.multiply(stock_returns[ada_weights.columns].loc[ada_weights.index]).sum(axis=1).add(1).cumprod().iloc[-1]
+        )
 
 
 
