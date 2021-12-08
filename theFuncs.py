@@ -316,11 +316,11 @@ def return_prediction_evaluation_pipeline(
 
 ######################################## PORTFOLIO ########################################
 def get_prediction_thresholds(predictions):
-    thresholds = (predictions.apply(lambda x: x.sort_values(ascending=False)) > 0.7).join(
-        (predictions > 0.7).groupby(level=[0, 1]).sum().rename(columns={"RETURN": "SUM"})
+    masked_predictions = (predictions >= 0.7).rename(columns={"RETURN": "MASK"})
+    thresholds = (predictions).join(
+        (masked_predictions).groupby(level=[0, 1]).sum().rename(columns={"MASK": "SUM"})
     )
-    thresholds["WEIGHT"] = thresholds.RETURN / thresholds.SUM
-    return thresholds[thresholds.RETURN == True].drop(columns=["SUM"])
+    return thresholds[thresholds.RETURN >= 0.7].drop(columns="SUM")
 
 
 
@@ -346,23 +346,33 @@ if __name__ == "__main__":
     predictions = pd.read_csv("output/predictions_Final.csv", index_col=[0, 1, 2])
 
     return_thresholds = get_prediction_thresholds(predictions)
+    print(return_thresholds.loc["2004-11-01", "AdaBoost"])
 
-    nov = return_thresholds.loc["2004-11-01", "AdaBoost"]
-    dec = return_thresholds.loc["2004-12-01", "AdaBoost"]
+    # nov = return_thresholds.loc["2004-11-01", "AdaBoost"]
+    # dec = return_thresholds.loc["2004-12-01", "AdaBoost"]
 
-    print(
-        nov.loc[np.setdiff1d(
-            nov.index, 
-            dec.index
-        )]
-    )
+    # print(
+    #     nov.loc[np.setdiff1d(
+    #         nov.index, 
+    #         dec.index
+    #     )]
+    # )
 
-    print(
-        dec.loc[np.setdiff1d( 
-            dec.index,
-            nov.index
-        )]
-    )
+    # print(
+    #     dec.loc[np.setdiff1d( 
+    #         dec.index,
+    #         nov.index
+    #     )]
+    # )
+
+    # prev_weights = return_thresholds.loc[:"2004-11-01"]
+    # print(return_thresholds)
+
+    # for date in pd.date_range("2004-12-01", "2005-02-01", freq="MS"):
+    #     A = return_thresholds.loc[date, "AdaBoost"]
+    #     B = prev_weights.loc[date + relativedelta(months=-1), "AdaBoost"]
+
+  
 
     print(datetime.now() - start)
 
