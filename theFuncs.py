@@ -296,23 +296,11 @@ if __name__ == "__main__":
     factors = get_stock_factors_data()
     # stock_returns = get_stock_return_data()
 
-    # factors = pd.read_csv(
-    #     "data/rus1000_stocks_factors_subset.csv",
-    #     converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
-    #     # parse_dates=["DATE"],
-    #     index_col=[1, 0]
-    # ).sort_index()
-
-    # factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
-    # factors = factors[~factors.index.duplicated(keep='first')]
-
-    # factors["TARGET"] = factors.groupby(level=1).RETURN.shift(-1)
-    # factors = factors.groupby(level=1).fillna(method='ffill').fillna(0)
-    # factors.sort_index(inplace=True)
-
     start = datetime.now()
 
-    t, ic = return_prediction_evaluation_pipeline()
+    t, ic = return_prediction_evaluation_pipeline(
+        eval_path="output/IC_T_CS.csv", predictions_path="output/predictions_CS.csv"
+    )
     print(ic)
     print(t)
 
