@@ -36,7 +36,7 @@ def get_stock_factors_data(sedols=None):
         './data/rus1000_stocks_factors.csv', 
         on_bad_lines='skip', 
         header = 2, 
-        # nrows = 100000, 
+        nrows = 100000, 
         low_memory=False, 
         converters={
             'SEDOL': lambda x: x[:6], 
@@ -282,7 +282,13 @@ if __name__ == "__main__":
             eval_df += [eval_instance]
             return_df += return_instance
 
-        # ctef = factors.loc[date].CTEF
+        ctef = factors.loc[date].CTEF.rank(pct=True)
+        ctefPredictionEvalDict = {}
+        ctefPredictionEvalDict["MODEL"] = "CTEF"
+        ctefPredictionEvalDict["DATE"] = date
+        ctefPredictionEvalDict["IC"], ctefPredictionEvalDict["T"] =\
+            information_coefficient_t_statistic(y_test.div(100), ctef)
+        eval_df += [ctefPredictionEvalDict]
 
     eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"]).sort_index()
     return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"])
@@ -297,8 +303,8 @@ if __name__ == "__main__":
         ]
     ).sort_index()
 
-    # eval_df.to_csv("output/IC_T_Final.csv")
-    return_df.to_csv("output/predictions_CTEF.csv")
+    eval_df.to_csv("output/IC_T_Final.csv")
+    return_df.to_csv("output/predictions_Final.csv")
 
     print(eval_df.groupby(level=1).describe()["T"])
     print(eval_df.groupby(level=1).describe()["IC"])
