@@ -58,7 +58,8 @@ def get_stock_factors_data(sedols=None):
 
 def get_stock_return_data(sedols=None):
     df = pd.read_csv(
-        "./data/cleaned_return_data_sc.csv", 
+        # "./data/cleaned_return_data_sc.csv", 
+        "./data/cleaned_return_data.csv", 
         # nrows=3, 
         parse_dates=['DATE'], 
         index_col=[0]
@@ -112,10 +113,14 @@ def information_coefficient_t_statistic(X, y):
 def get_portfolio_returns(weights, date, delta, returns):
     relevant_returns = returns.loc[
         date: date + relativedelta(months=delta)
-    ].add(1).cumprod()
+    ][weights.index.get_level_values(1)].add(1).cumprod().copy()
 
-    portfolio_returns = relevant_returns.multiply(weights).sum()
-    return portfolio_returns
+    for i in weights.index:
+        relevant_returns[[i]] = relevant_returns[[i]].multiply(weights.loc[i])
+
+    # portfolio_returns = relevant_returns.multiply(weights).sum()
+    # portfolio_returns = relevant_returns.multiply(weights, axis='index').sum()
+    return relevant_returns.sum(axis=1)
 
 def get_rus1000_returns(date, delta, returns):
     index_returns = returns.loc[
@@ -326,7 +331,7 @@ def get_prediction_thresholds(predictions, H=0.7):
 def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
     A = return_thresholds.loc[date, algo]
     B = portfolio_weights.loc[
-        date + relativedelta(months=-1), algo
+        (date + relativedelta(months=-1), algo,)
     ]
 
     B_not_A_K = B.loc[
@@ -342,6 +347,7 @@ def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
             B.drop(index=B_not_A_K.index),
         ]
     )
+    # B_star.drop_duplicates(inplace=True)
     B_star["WEIGHT"] = 1.0 / len(B_star)
     B_star["DATE"] = date
     B_star["MODEL"] = algo
@@ -384,7 +390,7 @@ def portfolio_pipeline(
 if __name__ == "__main__":
     # benchmark_returns = get_benchmark_return_data()
     # factors = get_stock_factors_data()
-    # stock_returns = get_stock_return_data()
+    stock_returns = get_stock_return_data()
 
     start = datetime.now()
 
@@ -414,7 +420,22 @@ if __name__ == "__main__":
         parse_dates=["DATE"]
     )
 
-    portfolio_weights = portfolio_pipeline(predictions)
+    # weights = portfolio_pipeline(predictions)    
+
+    portfolio_weights = pd.read_csv(
+        "output/portfolio_weights.csv",
+        index_col=[0, 1, 2],
+        parse_dates=["DATE"]
+    )
+
+    # print(
+    #     get_portfolio_returns(
+    #         portfolio_weights.loc[("2005-01-01", "AdaBoost"): ("2005-03-01", "AdaBoost")].WEIGHT, 
+    #         portfolio_weights.index.get_level_values(0).unique()[2], 
+    #         2, 
+    #         stock_returns
+    #     )
+    # )
 
 
     print(datetime.now() - start)
