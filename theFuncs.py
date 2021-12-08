@@ -296,7 +296,7 @@ def return_prediction_evaluation_pipeline(
     return_df = pd.concat(
         [
             return_df, 
-            factors[["MODEL", "CTEF"]].loc[start:].set_index(
+            factors[["MODEL", "CTEF"]].loc[start: end].set_index(
                 "MODEL", append=True
             ).reorder_levels(
                 ["DATE", "MODEL", "SEDOL"]
@@ -332,6 +332,12 @@ if __name__ == "__main__":
     )
     print(ic)
     print(t)
+
+    # feature_importance = pd.read_csv("output/feature_importance_Final.csv", index_col=[0, 1])
+    # IC_T = pd.read_csv("output/IC_T_Final.csv", index_col=[0, 1])
+    # predictions = pd.read_csv("output/predictions_Final.csv", index_col=[0, 1, 2])
+
+    # print(predictions)
 
     print(datetime.now() - start)
 
