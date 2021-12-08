@@ -142,7 +142,7 @@ class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
         )
         return X
 
-numerical_columns = ["RCP", "RBP", "RSP", "REP", "RDP", "RPM71", "RSTDEV", "9MFR", "8MFR", "ROA1"]
+numerical_columns = ["RCP", "RBP", "RSP", "REP", "RDP", "RPM71", "RSTDEV", "ROA1", "9MFR", "8MFR"]
 # RCP,RBP,RSP,REP,RDP,RPM71,RSTDEV,ROE1,ROE3,ROE5,ROA1,ROA3,ROIC,BR1,BR2,EP1,EP2,RV1,RV2,CTEF,9MFR,8MFR,LIT
 
 transformer = ColumnTransformer(
@@ -183,10 +183,13 @@ space = {
 }
 
 @ignore_warnings(category=ConvergenceWarning)
-def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date, index):
+def tune_train_test(
+    X_train, X_test, y_train, y_test, model, params, algo, date, index, columns=numerical_columns
+):
     trials = Trials()
     thePredictionDict = []
     thePredictionEvalDict = {}
+    theFeatureImportanceDict = {}
     
     def objective(params):
         model.set_params(**params)
@@ -225,14 +228,30 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
             {"MODEL": algo, "DATE": date, "SEDOL": i, "RETURN": new_y_pred.loc[i]}
         ]
 
-    return thePredictionDict, thePredictionEvalDict
+    if algo == "LinearRegression":
+        coef_sig = opti_model.coef_
+        theFeatureImportanceDict["DATE"] = date
+        theFeatureImportanceDict["MODEL"] = algo
+        for i in range(len(numerical_columns)):
+            theFeatureImportanceDict[numerical_columns[i]] = coef_sig[i]
+    if algo == "AdaBoost":
+        coef_sig = opti_model.feature_importances_
+        theFeatureImportanceDict["DATE"] = date
+        theFeatureImportanceDict["MODEL"] = algo
+        for i in range(len(numerical_columns)):
+            theFeatureImportanceDict[numerical_columns[i]] = coef_sig[i]
+
+    return thePredictionDict, thePredictionEvalDict, theFeatureImportanceDict
 
 def return_prediction_evaluation_pipeline(
     start="2004-11-01", end="2018-11-01", 
-    eval_path="output/IC_T_Final.csv", predictions_path="output/predictions_Final.csv"
+    eval_path="output/IC_T_Final.csv", predictions_path="output/predictions_Final.csv", 
+    feature_path="output/feature_importance_Final.csv",
+    output=True
 ):
     eval_df = []
     return_df = []
+    feature_importance_df = []
 
     for date in pd.date_range(start, end, freq="MS"):
         print(date)
@@ -248,7 +267,7 @@ def return_prediction_evaluation_pipeline(
 
         X_train_tr, X_test_tr = transformer.fit_transform(X_train), transformer.transform(X_test)
         for algo in models:
-            return_instance, eval_instance = tune_train_test(
+            return_instance, eval_instance, feature_instance = tune_train_test(
                 X_train_tr, 
                 X_test_tr,
                 y_train,
@@ -262,6 +281,7 @@ def return_prediction_evaluation_pipeline(
 
             eval_df += [eval_instance]
             return_df += return_instance
+            feature_importance_df += [feature_instance]
 
         ctef = factors.loc[date].CTEF.rank(pct=True)
         ctefPredictionEvalDict = {}
@@ -280,12 +300,17 @@ def return_prediction_evaluation_pipeline(
                 "MODEL", append=True
             ).reorder_levels(
                 ["DATE", "MODEL", "SEDOL"]
-            ).groupby(level=0).rank(pct=True)
+            ).groupby(level=0).rank(pct=True).loc[start:]
         ]
     ).sort_index()
+    feature_importance_df = pd.DataFrame(
+        feature_importance_df
+    ).set_index(["DATE", "MODEL"]).sort_index()
 
-    eval_df.to_csv(eval_path)
-    return_df.to_csv(predictions_path)
+    if output:
+        eval_df.to_csv(eval_path)
+        return_df.to_csv(predictions_path)
+        feature_importance_df.to_csv(feature_path)
 
     return eval_df.groupby(level=1).describe()["T"], eval_df.groupby(level=1).describe()["IC"]
 
@@ -298,9 +323,7 @@ if __name__ == "__main__":
 
     start = datetime.now()
 
-    t, ic = return_prediction_evaluation_pipeline(
-        eval_path="output/IC_T_CS.csv", predictions_path="output/predictions_CS.csv"
-    )
+    t, ic = return_prediction_evaluation_pipeline()
     print(ic)
     print(t)
 
