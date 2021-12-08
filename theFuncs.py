@@ -314,11 +314,19 @@ def return_prediction_evaluation_pipeline(
 
     return eval_df.groupby(level=1).describe()["T"], eval_df.groupby(level=1).describe()["IC"]
 
+######################################## PORTFOLIO ########################################
+def get_prediction_thresholds(predictions):
+    thresholds = (predictions.apply(lambda x: x.sort_values(ascending=False)) > 0.7).join(
+        (predictions > 0.7).groupby(level=[0, 1]).sum().rename(columns={"RETURN": "SUM"})
+    )
+    thresholds["WEIGHT"] = thresholds.RETURN / thresholds.SUM
+    return thresholds[thresholds.RETURN == True].drop(columns=["SUM"])
+
 
 
 if __name__ == "__main__":
     # benchmark_returns = get_benchmark_return_data()
-    factors = get_stock_factors_data()
+    # factors = get_stock_factors_data()
     # stock_returns = get_stock_return_data()
 
     start = datetime.now()
@@ -327,17 +335,34 @@ if __name__ == "__main__":
     # print(ic)
     # print(t)
 
-    t, ic = return_prediction_evaluation_pipeline(
-        eval_path="output/IC_T_CS.csv", predictions_path="output/predictions_CS.csv", feature_path="output/feature_importance_CS.csv"
+    # t, ic = return_prediction_evaluation_pipeline(
+    #     eval_path="output/IC_T_CS.csv", predictions_path="output/predictions_CS.csv", feature_path="output/feature_importance_CS.csv"
+    # )
+    # print(ic)
+    # print(t)
+
+    feature_importance = pd.read_csv("output/feature_importance_Final.csv", index_col=[0, 1])
+    IC_T = pd.read_csv("output/IC_T_Final.csv", index_col=[0, 1])
+    predictions = pd.read_csv("output/predictions_Final.csv", index_col=[0, 1, 2])
+
+    return_thresholds = get_prediction_thresholds(predictions)
+
+    nov = return_thresholds.loc["2004-11-01", "AdaBoost"]
+    dec = return_thresholds.loc["2004-12-01", "AdaBoost"]
+
+    print(
+        nov.loc[np.setdiff1d(
+            nov.index, 
+            dec.index
+        )]
     )
-    print(ic)
-    print(t)
 
-    # feature_importance = pd.read_csv("output/feature_importance_Final.csv", index_col=[0, 1])
-    # IC_T = pd.read_csv("output/IC_T_Final.csv", index_col=[0, 1])
-    # predictions = pd.read_csv("output/predictions_Final.csv", index_col=[0, 1, 2])
-
-    # print(predictions)
+    print(
+        dec.loc[np.setdiff1d( 
+            dec.index,
+            nov.index
+        )]
+    )
 
     print(datetime.now() - start)
 
