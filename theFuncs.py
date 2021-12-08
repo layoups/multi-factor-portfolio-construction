@@ -460,7 +460,7 @@ if __name__ == "__main__":
         parse_dates=["DATE"]
     )
     predictions = pd.read_csv(
-        "output/predictions_KNN.csv", 
+        "output/predictions.csv", 
         index_col=[0, 1, 2], 
         parse_dates=["DATE"]
     )
@@ -469,13 +469,13 @@ if __name__ == "__main__":
 
     # portfolio_weights = portfolio_pipeline(predictions, path='output/portfolio_weights_KNN.csv', algos=["LinearRegression", "CTEF", "AdaBoost", "KNN"])   
     # 
-    # portfolio_weights = portfolio_pipeline(predictions) 
+    portfolio_weights = portfolio_pipeline(predictions, algos=["LinearRegression", "CTEF", "AdaBoost", "DecisionTree", "KNN"]) 
 
-    portfolio_weights = pd.read_csv(
-        "output/portfolio_weights_KNN.csv",
-        index_col=[0, 1, 2],
-        parse_dates=["DATE"]
-    )
+    # portfolio_weights = pd.read_csv(
+    #     "output/portfolio_weights_KNN.csv",
+    #     index_col=[0, 1, 2],
+    #     parse_dates=["DATE"]
+    # )
 
     # portfolio_weights = portfolio_pipeline(predictions)
 
