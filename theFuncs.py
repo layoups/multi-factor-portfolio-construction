@@ -135,29 +135,20 @@ def get_portfolio_benchmark_returns(
     portfolio_return_metric, portfolio_weights, stock_returns, 
     benchmark_return_metric, benchmark_returns
 ):
+    algos = portfolio_weights.index.get_level_values("MODEL").unique()
+    to_concat = [
+        portfolio_return_metric(
+                get_portfolio_weights_for_model(model, portfolio_weights), 
+                stock_returns
+            )
+        for model in algos
+    ]
+    to_concat += [benchmark_return_metric(benchmark_returns)]
     return pd.concat(
-        [
-            portfolio_return_metric(
-                get_portfolio_weights_for_model("LinearRegression", portfolio_weights), 
-                stock_returns
-            ),
-            portfolio_return_metric(
-                get_portfolio_weights_for_model("CTEF", portfolio_weights), 
-                stock_returns
-            ),
-            portfolio_return_metric(
-                get_portfolio_weights_for_model("AdaBoost", portfolio_weights), 
-                stock_returns
-            ),
-            portfolio_return_metric(
-                get_portfolio_weights_for_model("DecisionTree", portfolio_weights), 
-                stock_returns
-            ),
-            benchmark_return_metric(benchmark_returns)
-        ],
+        to_concat,
         axis=1
     ).dropna().rename(
-        columns={0: "LinearRegression", 1: "CTEF", 2: "AdaBoost" , 3: "DecisionTree"}
+        columns={i: algos[i] for i in range(len(algos))}
     )
 
 ######################################## ML PIPELINE ########################################
@@ -201,6 +192,7 @@ models = {
     ),
     'AdaBoost': AdaBoostRegressor(), 
     'DecisionTree': DecisionTreeRegressor(), 
+    'KNN': KNeighborsRegressor()
 }
 
 space = {
@@ -216,6 +208,9 @@ space = {
         'min_samples_leaf': hp.randint('min_samples_leaf', 1, 20),
         'min_samples_split': hp.randint('min_samples_split', 2, 40),
     }, 
+    'KNN': {
+        'n_neighbors': hp.uniformint('n_neighbors', 3, 23)
+    }
 }
 
 @ignore_warnings(category=ConvergenceWarning)
@@ -391,18 +386,17 @@ def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
 
 def portfolio_pipeline(
     predictions, H=0.7, K=4, start="2005-01-01", end="2018-11-01",
-    path="output/portfolio_weights.csv", output=True
+    path="output/portfolio_weights.csv", output=True, 
+    algos=["LinearRegression", "CTEF", "AdaBoost", "DecisionTree"]
 ):
     start_date = datetime.strptime(start, "%Y-%m-%d")
     return_thresholds = get_prediction_thresholds(predictions, H)
     portfolio_weights = return_thresholds.loc[:start_date + relativedelta(months=-1)]
-    algos = ["LinearRegression", "CTEF", "AdaBoost", "DecisionTree"]
-
     for date in pd.date_range(start, end, freq="MS"):
         print(date)
         curr_return_thresholds = return_thresholds.loc[date]
         curr_algos = curr_return_thresholds.index.get_level_values("MODEL").unique()
-        for algo in curr_algos:
+        for algo in np.intersect1d(curr_algos, algos):
             new_weights = rebalance_portfolio(
                 date, algo, curr_return_thresholds.loc[algo], portfolio_weights, K
             )
@@ -450,36 +444,40 @@ if __name__ == "__main__":
     # print(t)
 
     # t, ic = return_prediction_evaluation_pipeline(
-    #     eval_path="output/IC_T_CS.csv", predictions_path="output/predictions_CS.csv", feature_path="output/feature_importance_CS.csv"
+    #     eval_path="output/IC_T_KNN.csv", predictions_path="output/predictions_KNN.csv", feature_path="output/feature_importance_KNN.csv"
     # )
     # print(ic)
     # print(t)
 
     feature_importance = pd.read_csv(
-        "output/feature_importance_Final.csv", 
+        "output/feature_importance_KNN.csv", 
         index_col=[0, 1], 
         parse_dates=["DATE"]
     )
     IC_T = pd.read_csv(
-        "output/IC_T_Final.csv", 
+        "output/IC_T_KNN.csv", 
         index_col=[0, 1], 
         parse_dates=["DATE"]
     )
     predictions = pd.read_csv(
-        "output/predictions_Final.csv", 
+        "output/predictions_KNN.csv", 
         index_col=[0, 1, 2], 
         parse_dates=["DATE"]
     )
 
-    # get_prediction_thresholds(predictions).to_csv("output/return_thresholds.csv")
+    # get_prediction_thresholds(predictions).to_csv("output/return_thresholds_KNN.csv")
 
-    # portfolio_weights = portfolio_pipeline(predictions)    
+    # portfolio_weights = portfolio_pipeline(predictions, path='output/portfolio_weights_KNN.csv', algos=["LinearRegression", "CTEF", "AdaBoost", "KNN"])   
+    # 
+    # portfolio_weights = portfolio_pipeline(predictions) 
 
     portfolio_weights = pd.read_csv(
-        "output/portfolio_weights.csv",
+        "output/portfolio_weights_KNN.csv",
         index_col=[0, 1, 2],
         parse_dates=["DATE"]
     )
+
+    # portfolio_weights = portfolio_pipeline(predictions)
 
     all_returns = get_portfolio_benchmark_returns(
             get_monthly_portfolio_returns,
@@ -488,6 +486,9 @@ if __name__ == "__main__":
             get_rus1000_monthly_returns,
             benchmark_returns
         )
+
+    all_returns.add(1).cumprod().plot()
+    plt.show()
     print(all_returns.apply(lambda x: x.add(1).cumprod().iloc[-1]))
     print(all_returns.apply(lambda x: max_drawdown(x)))
     print(all_returns.apply(lambda x: information_ratio(x)))
