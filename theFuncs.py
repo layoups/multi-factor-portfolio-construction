@@ -36,7 +36,7 @@ def get_stock_factors_data(sedols=None):
         './data/rus1000_stocks_factors.csv', 
         on_bad_lines='skip', 
         header = 2, 
-        # nrows = 1000, 
+        # nrows = 100000, 
         low_memory=False, 
         converters={
             'SEDOL': lambda x: x[:6], 
@@ -49,11 +49,11 @@ def get_stock_factors_data(sedols=None):
     df = df[df.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
     df = df[~df.index.duplicated(keep='first')]
 
-    df["TARGET"] = df.groupby(level=1).RETURN.shift(-1)
+    df["TARGET"] = df.groupby(level="SEDOL").RETURN.shift(-1)
     df = df.groupby(level=1).fillna(method='ffill').fillna(0)
     df.sort_index(inplace=True)
 
-    return df if sedols is None else df.loc[(sedols,), :]
+    return df
 
 def get_stock_return_data(sedols=None):
     df = pd.read_csv(
@@ -229,45 +229,38 @@ def tune_train_test(X_train, X_test, y_train, y_test, model, params, algo, date,
 
 
 if __name__ == "__main__":
-    sedols = pd.read_csv("data/sedols.csv", index_col=False)
     # benchmark_returns = get_benchmark_return_data()
-    # factors = get_stock_factors_data()
+    factors = get_stock_factors_data()
     # stock_returns = get_stock_return_data()
 
-    factors = pd.read_csv(
-        "data/rus1000_stocks_factors_subset.csv",
-        converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
-        # parse_dates=["DATE"],
-        index_col=[1, 0]
-    ).sort_index()
+    # factors = pd.read_csv(
+    #     "data/rus1000_stocks_factors_subset.csv",
+    #     converters={"DATE": lambda x: pd.to_datetime(x) + pd.offsets.MonthBegin(1)},
+    #     # parse_dates=["DATE"],
+    #     index_col=[1, 0]
+    # ).sort_index()
 
     # factors = factors[factors.index.get_level_values("SEDOL").isin(sedols.SEDOLS)]
-    factors = factors[~factors.index.duplicated(keep='first')]
+    # factors = factors[~factors.index.duplicated(keep='first')]
 
-    factors["TARGET"] = factors.groupby(level=1).RETURN.shift(-1)
-    factors = factors.groupby(level=1).fillna(method='ffill').fillna(0)
-    factors.sort_index(inplace=True)
+    # factors["TARGET"] = factors.groupby(level=1).RETURN.shift(-1)
+    # factors = factors.groupby(level=1).fillna(method='ffill').fillna(0)
+    # factors.sort_index(inplace=True)
 
     eval_df = []
     return_df = []
 
     start = datetime.now()
 
-    for date in pd.date_range("2004-11-01", "2006-11-01", freq="MS"):
+    for date in pd.date_range("2004-11-01", "2018-11-01", freq="MS"):
         print(date)
         
         # date = datetime.strptime("2004-11-01", "%Y-%m-%d")
         start_date = date - relativedelta(months=12)
 
-        # X_train = factors.loc[
-        #     start_date: date + relativedelta(months=-1)
-        # ].groupby(level=[0, 1]).fillna(method='ffill').fillna(0)
-
         X_train = factors.loc[start_date: date + relativedelta(months=-1)]
-        
         y_train = X_train.TARGET
 
-        # X_test = factors.loc[date].fillna(0)
         X_test = factors.loc[date]
         y_test = X_test.TARGET
 
@@ -293,8 +286,8 @@ if __name__ == "__main__":
     eval_df = pd.DataFrame(eval_df).set_index(["DATE", "MODEL"]).sort_index()
     return_df = pd.DataFrame(return_df).set_index(["DATE", "MODEL", "SEDOL"]).sort_index()
 
-    eval_df.to_csv("output/IC_T_F.csv")
-    return_df.to_csv("output/predictions_F.csv")
+    eval_df.to_csv("output/IC_T_Final.csv")
+    return_df.to_csv("output/predictions_Final.csv")
 
     print(eval_df.groupby(level=1).describe()["T"])
     print(eval_df.groupby(level=1).describe()["IC"])
