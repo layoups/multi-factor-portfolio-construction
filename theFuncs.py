@@ -323,6 +323,33 @@ def get_prediction_thresholds(predictions, H=0.7):
     thresholds["WEIGHT"] = thresholds.MASK / thresholds.SUM
     return thresholds[thresholds.MASK == True].drop(columns=["SUM", "MASK"])
 
+def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights):
+    A = return_thresholds.loc[date, algo]
+    B = portfolio_weights.loc[
+        date + relativedelta(months=-1), algo
+    ]
+
+    B_not_A_K = B.loc[
+        np.setdiff1d(B.index, A.index)
+    ].sort_values(by="RETURN").iloc[:K]
+    A_not_B_K = A.loc[
+        np.setdiff1d(A.index, B.index)
+    ].sort_values(by="RETURN", ascending=False).iloc[:K]
+
+    B_star = pd.concat(
+        [
+            A_not_B_K,
+            B.drop(index=B_not_A_K.index),
+        ]
+    )
+    B_star["DATE"] = date
+    B_star["MODEL"] = algo
+    
+    return B_star.set_index(
+                ["DATE", "MODEL"], append=True
+            ).reorder_levels(
+                    ["DATE", "MODEL", "SEDOL"]
+            )
 
 
 if __name__ == "__main__":
@@ -359,25 +386,6 @@ if __name__ == "__main__":
     )
 
     return_thresholds = get_prediction_thresholds(predictions)
-    # print(return_thresholds)
-    # print(return_thresholds.loc["2004-12-01", "AdaBoost"])
-
-    # nov = return_thresholds.loc["2004-11-01", "AdaBoost"]
-    # dec = return_thresholds.loc["2004-12-01", "AdaBoost"]
-
-    # print(
-    #     nov.loc[np.setdiff1d(
-    #         nov.index, 
-    #         dec.index
-    #     )]
-    # )
-
-    # print(
-    #     dec.loc[np.setdiff1d( 
-    #         dec.index,
-    #         nov.index
-    #     )]
-    # )
 
     portfolio_weights = return_thresholds.loc[:"2004-11-01"]
     K = 4
@@ -385,34 +393,11 @@ if __name__ == "__main__":
     for date in pd.date_range("2004-12-01", "2005-02-01", freq="MS"):
         print(date)
         for algo in ["CTEF", "AdaBoost", "LinearRegression"]:
-            A = return_thresholds.loc[date, algo]
-            B = portfolio_weights.loc[
-                date + relativedelta(months=-1), algo
-            ]
-
-            B_not_A_K = B.loc[
-                np.setdiff1d(B.index, A.index)
-            ].sort_values(by="RETURN").iloc[:K]
-            A_not_B_K = A.loc[
-                np.setdiff1d(A.index, B.index)
-            ].sort_values(by="RETURN", ascending=False).iloc[:K]
-
-            B_star = pd.concat(
-                [
-                    A_not_B_K,
-                    B.drop(index=B_not_A_K.index),
-                ]
-            )
-            B_star["DATE"] = date
-            B_star["MODEL"] = algo
+            new_weights = rebalance_portfolio(date, algo, return_thresholds, portfolio_weights)
             portfolio_weights = pd.concat(
                 [
                     portfolio_weights,
-                    B_star.set_index(
-                        ["DATE", "MODEL"], append=True
-                    ).reorder_levels(
-                            ["DATE", "MODEL", "SEDOL"]
-                    )
+                    new_weights
                 ]
             ).sort_index()
 
