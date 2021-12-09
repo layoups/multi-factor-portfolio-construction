@@ -64,7 +64,7 @@ def get_stock_return_data():
         # nrows=3, 
         parse_dates=['DATE'], 
         index_col=[0]
-    ).fillna(method='ffill').fillna(0).sort_index()
+    ).fillna(method='ffill').fillna(0).div(100).sort_index()
 
     return df[sedols.SEDOLS]
 
@@ -421,7 +421,7 @@ def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
             )
 
 def portfolio_pipeline(
-    predictions, H=0.7, K=4, start="2005-01-01", end="2018-11-01",
+    predictions, H=0.7, K=4, start="2004-12-01", end="2018-11-01",
     path="output/portfolio_weights.csv", output=True, 
     algos=["LinearRegression", "CTEF", "AdaBoost", "KNN"]
 ):
@@ -506,30 +506,30 @@ if __name__ == "__main__":
         index_col=[0, 1, 2],
         parse_dates=["DATE"]
     )
-    all_returns = pd.read_csv(
-        "output/summaries/all_returns_1.csv",
-        index_col=[0],
-        parse_dates=["DATE"]
-    )
+    # all_returns = pd.read_csv(
+    #     "output/summaries/all_returns_1.csv",
+    #     index_col=[0],
+    #     parse_dates=["DATE"]
+    # )
 
     # print(IC_T.groupby(level=1).describe().IC)
     # print(IC_T.groupby(level=1).describe()["T"])
     # get_prediction_thresholds(predictions).to_csv("output/return_thresholds_KNN.csv")
 
-    # all_returns = get_portfolio_benchmark_returns(
-    #         get_monthly_portfolio_returns,
-    #         portfolio_weights,
-    #         stock_returns,
-    #         get_rus1000_monthly_returns,
-    #         benchmark_returns
-    #     )
+    all_returns = get_portfolio_benchmark_returns(
+            get_monthly_portfolio_returns,
+            portfolio_weights,
+            stock_returns,
+            get_rus1000_monthly_returns,
+            benchmark_returns
+        )
 
-    # all_returns.to_csv("output/summaries/all_returns_11.csv")
-    # get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_11.csv")
+    all_returns.to_csv("output/summaries/all_returns_12.csv")
+    get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_12.csv")
     
     
 
-    all_returns.drop(columns=["KNN"]).add(1).cumprod().plot()
+    all_returns.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
     all_returns.add(1).cumprod().plot()
     plt.show()
     # print(ic, '\n')
