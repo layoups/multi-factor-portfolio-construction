@@ -131,6 +131,12 @@ dmypy.json
 # misc
 /data/cleaned_return_data_sc.csv
 /data/rus1000_stocks_factors.csv
+/output/IC_T_*.csv
+/output/feature_importance_*.csv
+/output/portfolio_weights_*.csv
+/output/predictions_*.csv
+/output/return_thresholds_*.csv
+
 garbage.py
 data_wrangling.ipynb
 
