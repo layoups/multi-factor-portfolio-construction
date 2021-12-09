@@ -544,14 +544,6 @@ if __name__ == "__main__":
     # all_returns.to_csv("output/summaries/all_returns_13.csv")
     # get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_13.csv")
     
-    
-
-    all_returns.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
-    all_returns.add(1).cumprod().plot()
-    plt.show()
-    all_returns_crash.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
-    all_returns_crash.add(1).cumprod().plot()
-    plt.show()
     # print(ic, '\n')
     # print(t, '\n')
 
@@ -564,6 +556,13 @@ if __name__ == "__main__":
     print(cum_returns_crash, '\n')
     print(mdd_crash, '\n')
     print(ir_crash, '\n')
+
+    all_returns.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
+    all_returns.add(1).cumprod().plot()
+    plt.show()
+    all_returns_crash.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
+    all_returns_crash.add(1).cumprod().plot()
+    plt.show()
 
     print(datetime.now() - start)
 
