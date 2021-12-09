@@ -176,6 +176,13 @@ def get_portfolio_benchmark_returns(
         columns={i: algos[i] for i in range(len(algos))}
     )
 
+def evaluate_all_returns(all_returns):
+    return (
+        all_returns.apply(lambda x: x.add(1).cumprod().iloc[-1]), 
+        all_returns.apply(lambda x: max_drawdown(x.add(1).cumprod())), 
+        all_returns.apply(lambda x: information_ratio(x))
+    )
+
 ######################################## ML PIPELINE ########################################
 class NumericalFeatureCleaner(BaseEstimator, TransformerMixin):
     def __init__(self):
@@ -368,7 +375,7 @@ def return_prediction_evaluation_pipeline(
         return_df.to_csv(predictions_path)
         feature_importance_df.to_csv(feature_path)
 
-    return eval_df.groupby(level=1).describe()["T"], eval_df.groupby(level=1).describe()["IC"], return_df
+    return eval_df.groupby(level=1).describe()["T"], eval_df.groupby(level=1).describe()["IC"], return_df, feature_importance_df
 
 ######################################## PORTFOLIO ########################################
 def get_prediction_thresholds(predictions, H=0.7):
@@ -464,15 +471,13 @@ if __name__ == "__main__":
     # print(ic)
     # print(t)
 
-    factors = get_stock_factors_data()
+    # factors = get_stock_factors_data()
 
-    t, ic, predictions = return_prediction_evaluation_pipeline(
-        eval_path="./output/IC_T_prime.csv", predictions_path="./output/predictions_prime.csv", feature_path="./output/feature_importance_prime.csv"
-    )
-    print(ic)
-    print(t)
+    # t, ic, predictions, feature_importance = return_prediction_evaluation_pipeline(
+    #     eval_path="./output/IC_T_prime.csv", predictions_path="./output/predictions_prime.csv", feature_path="./output/feature_importance_prime.csv"
+    # )
 
-    portfolio_weights = portfolio_pipeline(predictions, path='./output/portfolio_weights_prime.csv') 
+    # portfolio_weights = portfolio_pipeline(predictions, path='./output/portfolio_weights_prime.csv') 
 
     benchmark_returns = get_benchmark_return_data()
     stock_returns = get_stock_return_data()
@@ -492,11 +497,11 @@ if __name__ == "__main__":
     #     index_col=[0, 1, 2], 
     #     parse_dates=["DATE"]
     # )
-    # portfolio_weights = pd.read_csv(
-    #     "output/portfolio_weights_prime.csv",
-    #     index_col=[0, 1, 2],
-    #     parse_dates=["DATE"]
-    # )
+    portfolio_weights = pd.read_csv(
+        "output/portfolio_weights.csv",
+        index_col=[0, 1, 2],
+        parse_dates=["DATE"]
+    )
     # all_returns = pd.read_csv(
     #     "output/summaries/all_returns_10.csv",
     #     index_col=[0],
@@ -515,16 +520,21 @@ if __name__ == "__main__":
             benchmark_returns
         )
 
-    all_returns.to_csv("output/summaries/all_returns_10]1.csv")
-    get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_11.csv")
+    # all_returns.to_csv("output/summaries/all_returns_11.csv")
+    # get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_11.csv")
     
     
 
-    # all_returns.add(1).cumprod().plot()
-    # plt.show()
-    print(all_returns.apply(lambda x: x.add(1).cumprod().iloc[-1]), '\n')
-    print(all_returns.apply(lambda x: max_drawdown(x.add(1).cumprod())), '\n')
-    print(all_returns.apply(lambda x: information_ratio(x)), '\n')
+    all_returns.add(1).cumprod().plot()
+    plt.show()
+    # print(ic, '\n')
+    # print(t, '\n')
+
+    cum_returns, mdd, ir = evaluate_all_returns(all_returns)
+
+    print(cum_returns, '\n')
+    print(mdd, '\n')
+    print(ir, '\n')
 
     print(datetime.now() - start)
 
