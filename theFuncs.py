@@ -87,7 +87,7 @@ def information_ratio(returns):
     return returns.mean() / returns.std() * np.sqrt(12)
 
 def max_drawdown(returns):
-    i = np.argmax(np.maximum.accumulate(returns) - returns) # end of the period
+    i = np.argmax(np.maximum.accumulate(returns) - returns)
     j = np.argmax(returns[:i])
 
     return (returns[j] - returns[i]) / returns[j]
@@ -122,6 +122,24 @@ def get_portfolio_weights_for_model(model, portfolio_weights):
             columns="SEDOL",
             index="DATE"
         ).fillna(0)
+
+def get_portfolio_weights_with_model(model, portfolio_weights):
+    return portfolio_weights[
+            portfolio_weights.index.get_level_values("MODEL") == model
+        ].pivot_table(
+            values="WEIGHT", 
+            columns="SEDOL",
+            index=["DATE", "MODEL"]
+        ).fillna(0)
+
+def get_portfolio_weights_for_all_models(models, portfolio_weights):
+    return pd.concat(
+        [
+            get_portfolio_weights_with_model(model, portfolio_weights) 
+            for model in models
+        ], 
+        axis=0
+    ).fillna(0)
 
 def get_monthly_portfolio_returns(weights, returns):
     return weights.multiply(
@@ -198,7 +216,7 @@ models = {
         tol=1e-3, 
     ),
     'AdaBoost': AdaBoostRegressor(), 
-    'DecisionTree': DecisionTreeRegressor(), 
+    # 'DecisionTree': DecisionTreeRegressor(), 
     'KNN': KNeighborsRegressor()
 }
 
@@ -350,7 +368,7 @@ def return_prediction_evaluation_pipeline(
         return_df.to_csv(predictions_path)
         feature_importance_df.to_csv(feature_path)
 
-    return eval_df.groupby(level=1).describe()["T"], eval_df.groupby(level=1).describe()["IC"]
+    return eval_df.groupby(level=1).describe()["T"], eval_df.groupby(level=1).describe()["IC"], return_df
 
 ######################################## PORTFOLIO ########################################
 def get_prediction_thresholds(predictions, H=0.7):
@@ -394,7 +412,7 @@ def rebalance_portfolio(date, algo, return_thresholds, portfolio_weights, K=4):
 def portfolio_pipeline(
     predictions, H=0.7, K=4, start="2005-01-01", end="2018-11-01",
     path="output/portfolio_weights.csv", output=True, 
-    algos=["LinearRegression", "CTEF", "AdaBoost", "DecisionTree"]
+    algos=["LinearRegression", "CTEF", "AdaBoost", "KNN"]
 ):
     start_date = datetime.strptime(start, "%Y-%m-%d")
     return_thresholds = get_prediction_thresholds(predictions, H)
@@ -438,10 +456,6 @@ def portfolio_pipeline(
 
 
 if __name__ == "__main__":
-    benchmark_returns = get_benchmark_return_data()
-    # factors = get_stock_factors_data()
-    stock_returns = get_stock_return_data()
-
     # print(group_all_by_decile("data/rus1000_stocks_factors.csv"))
 
     start = datetime.now()
@@ -450,43 +464,48 @@ if __name__ == "__main__":
     # print(ic)
     # print(t)
 
-    # t, ic = return_prediction_evaluation_pipeline(
-    #     eval_path="output/IC_T_KNN.csv", predictions_path="output/predictions_KNN.csv", feature_path="output/feature_importance_KNN.csv"
+    factors = get_stock_factors_data()
+
+    t, ic, predictions = return_prediction_evaluation_pipeline(
+        eval_path="output/IC_T_prime.csv", predictions_path="output/predictions_prime.csv", feature_path="output/feature_importance_prime.csv"
+    )
+    print(ic)
+    print(t)
+
+    portfolio_weights = portfolio_pipeline(predictions, path='output/portfolio_weights_prime.csv') 
+
+    benchmark_returns = get_benchmark_return_data()
+    stock_returns = get_stock_return_data()
+
+    # feature_importance = pd.read_csv(
+    #     "output/feature_importance_prime.csv", 
+    #     index_col=[0, 1], 
+    #     parse_dates=["DATE"]
     # )
-    # print(ic)
-    # print(t)
+    # IC_T = pd.read_csv(
+    #     "output/IC_T_prime.csv", 
+    #     index_col=[0, 1], 
+    #     parse_dates=["DATE"]
+    # )
+    # predictions = pd.read_csv(
+    #     "output/predictions_prime.csv", 
+    #     index_col=[0, 1, 2], 
+    #     parse_dates=["DATE"]
+    # )
+    # portfolio_weights = pd.read_csv(
+    #     "output/portfolio_weights_prime.csv",
+    #     index_col=[0, 1, 2],
+    #     parse_dates=["DATE"]
+    # )
+    # all_returns = pd.read_csv(
+    #     "output/summaries/all_returns_8.csv",
+    #     index_col=[0],
+    #     parse_dates=["DATE"]
+    # )
 
-    feature_importance = pd.read_csv(
-        "output/feature_importance_Final.csv", 
-        index_col=[0, 1], 
-        parse_dates=["DATE"]
-    )
-    IC_T = pd.read_csv(
-        "output/IC_T.csv", 
-        index_col=[0, 1], 
-        parse_dates=["DATE"]
-    )
-    predictions = pd.read_csv(
-        "output/predictions.csv", 
-        index_col=[0, 1, 2], 
-        parse_dates=["DATE"]
-    )
-
-    print(IC_T.groupby(level=1).describe().IC)
-    print(IC_T.groupby(level=1).describe()["T"])
+    # print(IC_T.groupby(level=1).describe().IC)
+    # print(IC_T.groupby(level=1).describe()["T"])
     # get_prediction_thresholds(predictions).to_csv("output/return_thresholds_KNN.csv")
-
-    # portfolio_weights = portfolio_pipeline(predictions, path='output/portfolio_weights_KNN.csv', algos=["LinearRegression", "CTEF", "AdaBoost", "KNN"])   
-    # 
-    # portfolio_weights = portfolio_pipeline(predictions, algos=["LinearRegression", "CTEF", "AdaBoost", "DecisionTree", "KNN"]) 
-
-    portfolio_weights = pd.read_csv(
-        "output/portfolio_weights_KNN.csv",
-        index_col=[0, 1, 2],
-        parse_dates=["DATE"]
-    )
-
-    # portfolio_weights = portfolio_pipeline(predictions)
 
     all_returns = get_portfolio_benchmark_returns(
             get_monthly_portfolio_returns,
@@ -496,11 +515,16 @@ if __name__ == "__main__":
             benchmark_returns
         )
 
+    all_returns.to_csv("output/summaries/all_returns_9.csv")
+    get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_9.csv")
+    
+    
+
     all_returns.add(1).cumprod().plot()
     plt.show()
-    print(all_returns.apply(lambda x: x.add(1).cumprod().iloc[-1]))
-    print(all_returns.apply(lambda x: max_drawdown(x)))
-    print(all_returns.apply(lambda x: information_ratio(x)))
+    print(all_returns.apply(lambda x: x.add(1).cumprod().iloc[-1]), '\n')
+    print(all_returns.apply(lambda x: max_drawdown(x.add(1).cumprod())), '\n')
+    print(all_returns.apply(lambda x: information_ratio(x)), '\n')
 
     print(datetime.now() - start)
 
