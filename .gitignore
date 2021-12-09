@@ -136,7 +136,7 @@ dmypy.json
 /output/portfolio_weights_*.csv
 /output/predictions_*.csv
 /output/return_thresholds_*.csv
-
+/output/fluff/
 garbage.py
 data_wrangling.ipynb
 
