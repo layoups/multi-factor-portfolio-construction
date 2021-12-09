@@ -478,10 +478,17 @@ if __name__ == "__main__":
     # factors = get_stock_factors_data()
 
     # t, ic, predictions, feature_importance = return_prediction_evaluation_pipeline(
-    #     eval_path="./output/IC_T_prime.csv", predictions_path="./output/predictions_prime.csv", feature_path="./output/feature_importance_prime.csv"
+    #     eval_path="./output/IC_T_mae.csv", predictions_path="./output/predictions_mae.csv", feature_path="./output/feature_importance_mae.csv"
     # )
 
-    # portfolio_weights = portfolio_pipeline(predictions, path='./output/portfolio_weights_prime.csv') 
+    # predictions = pd.read_csv(
+    #     "output/predictions_prime.csv", 
+    #     index_col=[0, 1, 2], 
+    #     parse_dates=["DATE"]
+    # )
+
+
+    # portfolio_weights = portfolio_pipeline(predictions, H=0.7, K=4, path='./output/portfolio_weights_mae.csv') 
 
     benchmark_returns = get_benchmark_return_data()
     stock_returns = get_stock_return_data()
@@ -491,18 +498,18 @@ if __name__ == "__main__":
     #     index_col=[0, 1], 
     #     parse_dates=["DATE"]
     # )
-    # IC_T = pd.read_csv(
-    #     "output/IC_T_prime.csv", 
-    #     index_col=[0, 1], 
-    #     parse_dates=["DATE"]
-    # )
+    IC_T = pd.read_csv(
+        "output/IC_T_prime.csv", 
+        index_col=[0, 1], 
+        parse_dates=["DATE"]
+    )
     # predictions = pd.read_csv(
     #     "output/predictions_prime.csv", 
     #     index_col=[0, 1, 2], 
     #     parse_dates=["DATE"]
     # )
     portfolio_weights = pd.read_csv(
-        "output/portfolio_weights.csv",
+        "output/portfolio_weights_prime.csv",
         index_col=[0, 1, 2],
         parse_dates=["DATE"]
     )
@@ -516,6 +523,14 @@ if __name__ == "__main__":
     # print(IC_T.groupby(level=1).describe()["T"])
     # get_prediction_thresholds(predictions).to_csv("output/return_thresholds_KNN.csv")
 
+    all_returns_crash = get_portfolio_benchmark_returns(
+            get_monthly_portfolio_returns,
+            portfolio_weights,
+            stock_returns,
+            get_rus1000_monthly_returns,
+            benchmark_returns
+        )["2008-01-01": "2012-03-01"]
+
     all_returns = get_portfolio_benchmark_returns(
             get_monthly_portfolio_returns,
             portfolio_weights,
@@ -524,22 +539,31 @@ if __name__ == "__main__":
             benchmark_returns
         )
 
-    all_returns.to_csv("output/summaries/all_returns_12.csv")
-    get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_12.csv")
+    print(all_returns.corr())
+
+    # all_returns.to_csv("output/summaries/all_returns_13.csv")
+    # get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_13.csv")
     
     
 
     all_returns.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
     all_returns.add(1).cumprod().plot()
     plt.show()
+    all_returns_crash.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
+    all_returns_crash.add(1).cumprod().plot()
+    plt.show()
     # print(ic, '\n')
     # print(t, '\n')
 
     cum_returns, mdd, ir = evaluate_all_returns(all_returns)
+    cum_returns_crash, mdd_crash, ir_crash = evaluate_all_returns(all_returns_crash)
 
     print(cum_returns, '\n')
     print(mdd, '\n')
     print(ir, '\n')
+    print(cum_returns_crash, '\n')
+    print(mdd_crash, '\n')
+    print(ir_crash, '\n')
 
     print(datetime.now() - start)
 
