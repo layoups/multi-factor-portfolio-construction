@@ -467,12 +467,12 @@ if __name__ == "__main__":
     factors = get_stock_factors_data()
 
     t, ic, predictions = return_prediction_evaluation_pipeline(
-        eval_path="output/IC_T_prime.csv", predictions_path="output/predictions_prime.csv", feature_path="output/feature_importance_prime.csv"
+        eval_path="./output/IC_T_prime.csv", predictions_path="./output/predictions_prime.csv", feature_path="./output/feature_importance_prime.csv"
     )
     print(ic)
     print(t)
 
-    portfolio_weights = portfolio_pipeline(predictions, path='output/portfolio_weights_prime.csv') 
+    portfolio_weights = portfolio_pipeline(predictions, path='./output/portfolio_weights_prime.csv') 
 
     benchmark_returns = get_benchmark_return_data()
     stock_returns = get_stock_return_data()
@@ -498,7 +498,7 @@ if __name__ == "__main__":
     #     parse_dates=["DATE"]
     # )
     # all_returns = pd.read_csv(
-    #     "output/summaries/all_returns_8.csv",
+    #     "output/summaries/all_returns_10.csv",
     #     index_col=[0],
     #     parse_dates=["DATE"]
     # )
@@ -515,13 +515,13 @@ if __name__ == "__main__":
             benchmark_returns
         )
 
-    all_returns.to_csv("output/summaries/all_returns_9.csv")
-    get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_9.csv")
+    all_returns.to_csv("output/summaries/all_returns_10]1.csv")
+    get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_11.csv")
     
     
 
-    all_returns.add(1).cumprod().plot()
-    plt.show()
+    # all_returns.add(1).cumprod().plot()
+    # plt.show()
     print(all_returns.apply(lambda x: x.add(1).cumprod().iloc[-1]), '\n')
     print(all_returns.apply(lambda x: max_drawdown(x.add(1).cumprod())), '\n')
     print(all_returns.apply(lambda x: information_ratio(x)), '\n')
