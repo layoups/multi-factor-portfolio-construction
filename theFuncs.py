@@ -93,6 +93,8 @@ def max_drawdown(returns):
     return (returns[j] - returns[i]) / returns[j]
 
 def group_by_decile(date, factors):
+    factors.loc[date].RETURN.plot.hist()
+    plt.show()
     return factors.loc[
             date
         ].RETURN.groupby(
@@ -101,6 +103,8 @@ def group_by_decile(date, factors):
 
 def group_all_by_decile(path_to_factors):
     factors = get_stock_factors_data(path_to_factors)
+    factors.RETURN.plot.hist()
+    plt.show()
     return factors.RETURN.groupby(
             pd.qcut(factors.RETURN.values, 10, duplicates='drop')
         ).count()
@@ -502,29 +506,30 @@ if __name__ == "__main__":
         index_col=[0, 1, 2],
         parse_dates=["DATE"]
     )
-    # all_returns = pd.read_csv(
-    #     "output/summaries/all_returns_10.csv",
-    #     index_col=[0],
-    #     parse_dates=["DATE"]
-    # )
+    all_returns = pd.read_csv(
+        "output/summaries/all_returns_1.csv",
+        index_col=[0],
+        parse_dates=["DATE"]
+    )
 
     # print(IC_T.groupby(level=1).describe().IC)
     # print(IC_T.groupby(level=1).describe()["T"])
     # get_prediction_thresholds(predictions).to_csv("output/return_thresholds_KNN.csv")
 
-    all_returns = get_portfolio_benchmark_returns(
-            get_monthly_portfolio_returns,
-            portfolio_weights,
-            stock_returns,
-            get_rus1000_monthly_returns,
-            benchmark_returns
-        )
+    # all_returns = get_portfolio_benchmark_returns(
+    #         get_monthly_portfolio_returns,
+    #         portfolio_weights,
+    #         stock_returns,
+    #         get_rus1000_monthly_returns,
+    #         benchmark_returns
+    #     )
 
     # all_returns.to_csv("output/summaries/all_returns_11.csv")
     # get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_11.csv")
     
     
 
+    all_returns.drop(columns=["KNN"]).add(1).cumprod().plot()
     all_returns.add(1).cumprod().plot()
     plt.show()
     # print(ic, '\n')
