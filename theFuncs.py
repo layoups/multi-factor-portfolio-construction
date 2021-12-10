@@ -467,101 +467,121 @@ def portfolio_pipeline(
 
 
 if __name__ == "__main__":
+
+    benchmark_returns = get_benchmark_return_data()
+    stock_returns = get_stock_return_data()
+
+    ###################### Standardized Return Distribution ######################
     # print(group_all_by_decile("data/rus1000_stocks_factors.csv"))
 
     start = datetime.now()
 
-    # t, ic = return_prediction_evaluation_pipeline()
-    # print(ic)
-    # print(t)
+    ###################### Run All Pipelines ######################
 
     # factors = get_stock_factors_data()
 
-    # t, ic, predictions, feature_importance = return_prediction_evaluation_pipeline(
-    #     eval_path="./output/IC_T_mae.csv", predictions_path="./output/predictions_mae.csv", feature_path="./output/feature_importance_mae.csv"
-    # )
+    # t, ic, predictions, feature_importance = return_prediction_evaluation_pipeline()
 
-    # predictions = pd.read_csv(
-    #     "output/predictions_prime.csv", 
-    #     index_col=[0, 1, 2], 
-    #     parse_dates=["DATE"]
-    # )
+    # portfolio_weights = portfolio_pipeline(predictions)
 
-
-    # portfolio_weights = portfolio_pipeline(predictions, H=0.7, K=4, path='./output/portfolio_weights_mae.csv') 
-
-    benchmark_returns = get_benchmark_return_data()
-    stock_returns = get_stock_return_data()
+    ###################### Start Given Predictions ######################
 
     # feature_importance = pd.read_csv(
     #     "output/feature_importance_prime.csv", 
     #     index_col=[0, 1], 
     #     parse_dates=["DATE"]
     # )
+
+    # IC_T = pd.read_csv(
+    #     "output/IC_T.csv", 
+    #     index_col=[0, 1], 
+    #     parse_dates=["DATE"]
+    # )
+
+    # predictions = pd.read_csv(
+    #     "output/predictions.csv", 
+    #     index_col=[0, 1, 2], 
+    #     parse_dates=["DATE"]
+    # )
+
+    # portfolio_weights = portfolio_pipeline(predictions)
+
+    # t, ic = IC_T.groupby(level=1).describe()["T"], IC_T.groupby(level=1).describe().IC
+
+    ###################### Performance Evaluation Given All Data ######################
+
+    feature_importance = pd.read_csv(
+        "output/feature_importance_prime.csv", 
+        index_col=[0, 1], 
+        parse_dates=["DATE"]
+    )
+
     IC_T = pd.read_csv(
         "output/IC_T.csv", 
         index_col=[0, 1], 
         parse_dates=["DATE"]
     )
-    # predictions = pd.read_csv(
-    #     "output/predictions_prime.csv", 
-    #     index_col=[0, 1, 2], 
-    #     parse_dates=["DATE"]
-    # )
+
+    predictions = pd.read_csv(
+        "output/predictions.csv", 
+        index_col=[0, 1, 2], 
+        parse_dates=["DATE"]
+    )
+
     portfolio_weights = pd.read_csv(
         "output/portfolio_weights.csv",
         index_col=[0, 1, 2],
         parse_dates=["DATE"]
     )
-    # all_returns = pd.read_csv(
-    #     "output/summaries/all_returns_1.csv",
-    #     index_col=[0],
-    #     parse_dates=["DATE"]
-    # )
 
-    # print(IC_T.groupby(level=1).describe().IC)
-    # print(IC_T.groupby(level=1).describe()["T"])
-    # get_prediction_thresholds(predictions).to_csv("output/return_thresholds_KNN.csv")
+    t, ic = IC_T.groupby(level=1).describe()["T"], IC_T.groupby(level=1).describe().IC
+
+    ###################### Performance Evaluation ######################
+
+    ########## IC and t-statistic
+    print(ic, '\n')
+    print(t, '\n')
+
+    ########## Performance during Great Recession
 
     all_returns_crash = get_portfolio_benchmark_returns(
-            get_monthly_portfolio_returns,
-            portfolio_weights,
-            stock_returns,
-            get_rus1000_monthly_returns,
-            benchmark_returns
-        )["2008-01-01": "2012-03-01"]
+        get_monthly_portfolio_returns,
+        portfolio_weights,
+        stock_returns,
+        get_rus1000_monthly_returns,
+        benchmark_returns
+    )["2008-01-01": "2012-03-01"]
 
-    all_returns = get_portfolio_benchmark_returns(
-            get_monthly_portfolio_returns,
-            portfolio_weights,
-            stock_returns,
-            get_rus1000_monthly_returns,
-            benchmark_returns
-        )
-
-    print(all_returns.corr())
-
-    # all_returns.to_csv("output/summaries/all_returns_13.csv")
-    # get_portfolio_weights_for_all_models(["LinearRegression", "CTEF", "AdaBoost", "KNN"], portfolio_weights).to_csv("output/summaries/weights_13.csv")
-    
-    # print(ic, '\n')
-    # print(t, '\n')
-
-    cum_returns, mdd, ir = evaluate_all_returns(all_returns)
     cum_returns_crash, mdd_crash, ir_crash = evaluate_all_returns(all_returns_crash)
 
-    print(cum_returns, '\n')
-    print(mdd, '\n')
-    print(ir, '\n')
     print(cum_returns_crash, '\n')
     print(mdd_crash, '\n')
     print(ir_crash, '\n')
 
-    all_returns.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
-    all_returns.add(1).cumprod().plot()
-    plt.show()
     all_returns_crash.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
     all_returns_crash.add(1).cumprod().plot()
+    plt.show()
+
+    ########## Overall Performance 
+
+    all_returns = get_portfolio_benchmark_returns(
+        get_monthly_portfolio_returns,
+        portfolio_weights,
+        stock_returns,
+        get_rus1000_monthly_returns,
+        benchmark_returns
+    )
+
+    print(all_returns.corr())
+
+    cum_returns, mdd, ir = evaluate_all_returns(all_returns)
+    
+    print(cum_returns, '\n')
+    print(mdd, '\n')
+    print(ir, '\n')
+
+    all_returns.drop(columns=["Russell 1000 Bench Return"]).add(1).cumprod().plot()
+    all_returns.add(1).cumprod().plot()
     plt.show()
 
     print(datetime.now() - start)
