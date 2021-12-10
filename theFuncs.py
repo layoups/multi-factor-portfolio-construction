@@ -306,6 +306,7 @@ def tune_train_test(
     return thePredictionDict, thePredictionEvalDict, theFeatureImportanceDict
 
 def return_prediction_evaluation_pipeline(
+    factors,
     start="2004-11-01", end="2018-11-01", 
     eval_path="output/IC_T_Final.csv", predictions_path="output/predictions_Final.csv", 
     feature_path="output/feature_importance_Final.csv",
