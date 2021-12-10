@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.stats as st
-from statsmodels.regression.rolling import RollingOLS
-import random as rd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 

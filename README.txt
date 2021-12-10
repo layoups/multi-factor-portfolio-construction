@@ -4,10 +4,12 @@ Files
 - output/, contains output required to run model performance evaluation without having to run all the project pipelines, in addition to the required project output in the output/required/ folder
 
 Dependencies
--  numpy np
- pandas pd
- matplotlib.pyplot plt
- scipy.stats st
+- Python 3.7+, developed with Python 3.8.8
+    - numpy
+    - pandas
+    - matplotlib.pyplot
+    - scipy.stats 
+    - 
 from statsmodels.regression.rolling  RollingOLS
  random rd
 from datetime  datetime
