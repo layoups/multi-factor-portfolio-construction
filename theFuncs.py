@@ -7,9 +7,6 @@ import random as rd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-import gurobipy as gp
-from gurobipy import GRB
-
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor 
 from sklearn.linear_model import LinearRegression, Lasso, ElasticNet
 from sklearn.neighbors import KNeighborsRegressor
