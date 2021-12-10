@@ -499,7 +499,7 @@ if __name__ == "__main__":
     #     parse_dates=["DATE"]
     # )
     IC_T = pd.read_csv(
-        "output/IC_T_prime.csv", 
+        "output/IC_T.csv", 
         index_col=[0, 1], 
         parse_dates=["DATE"]
     )
@@ -509,7 +509,7 @@ if __name__ == "__main__":
     #     parse_dates=["DATE"]
     # )
     portfolio_weights = pd.read_csv(
-        "output/portfolio_weights_prime.csv",
+        "output/portfolio_weights.csv",
         index_col=[0, 1, 2],
         parse_dates=["DATE"]
     )
